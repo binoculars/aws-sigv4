@@ -1,6 +1,6 @@
 {
   "name": "aws-sigv4",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AWS Signature Version 4",
   "main": "lib/index.js",
   "directories": {
@@ -12,16 +12,15 @@
   },
   "keywords": [
     "aws",
-    "signature",
-    "v4"
+    "signature"
   ],
   "author": "Barrett K. Harber <barrett.harber@gmail.com>",
   "license": "Unlicense",
   "dependencies": {
+    "babel": "^5.8.23",
     "bluebird": "^2.10.2"
   },
   "devDependencies": {
-    "babel": "^5.8.23",
     "gulp": "^3.9.0",
     "gulp-download": "0.0.1",
     "gulp-unzip": "^0.1.3",
