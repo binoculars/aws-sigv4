@@ -21,6 +21,7 @@
     "bluebird": "^2.10.2"
   },
   "devDependencies": {
+    "eslint": "^1.7.1",
     "gulp": "^3.9.0",
     "gulp-download": "0.0.1",
     "gulp-unzip": "^0.1.3",
