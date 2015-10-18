@@ -1,0 +1,1 @@
+An AWS Signature Version 4 library
