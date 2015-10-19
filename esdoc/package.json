@@ -1,0 +1,40 @@
+{
+  "name": "aws-sigv4",
+  "version": "1.0.1",
+  "description": "AWS Signature Version 4",
+  "main": "lib/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "pretest": "gulp checkSuite",
+    "test": "mocha"
+  },
+  "keywords": [
+    "aws",
+    "signature"
+  ],
+  "author": "Barrett K. Harber <barrett.harber@gmail.com>",
+  "license": "Unlicense",
+  "dependencies": {
+    "babel": "^5.8.23",
+    "bluebird": "^2.10.2"
+  },
+  "devDependencies": {
+    "eslint": "^1.7.1",
+    "gulp": "^3.9.0",
+    "gulp-download": "0.0.1",
+    "gulp-unzip": "^0.1.3",
+    "mocha": "^2.3.3",
+    "mocha-eslint": "^1.0.0"
+  },
+  "babel": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/binoculars/aws-sigv4.git"
+  },
+  "bugs": {
+    "url": "https://github.com/binoculars/aws-sigv4/issues"
+  },
+  "homepage": "https://github.com/binoculars/aws-sigv4"
+}

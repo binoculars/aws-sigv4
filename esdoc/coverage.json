@@ -1,0 +1,12 @@
+{
+  "coverage": "100%",
+  "expectCount": 11,
+  "actualCount": 11,
+  "files": {
+    "src/index.es6": {
+      "expectCount": 11,
+      "actualCount": 11,
+      "undocumentLines": []
+    }
+  }
+}

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../">
+  <title data-ice="title">src/index.es6 | API Document</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+  <script src="script/manual.js"></script>
+</head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  <a data-ice="repoURL" href="https://github.com/binoculars/aws-sigv4.git" class="repo-url-github">Repository</a>
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-addAuthorization">addAuthorization</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-authorization">authorization</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-canonicalRequest">canonicalRequest</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-formatDateTime">formatDateTime</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-hash">hash</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-parseHead">parseHead</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-parseRequest">parseRequest</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-querystringify">querystringify</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-requestToCanonicalRequest">requestToCanonicalRequest</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-sign">sign</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-stringToSign">stringToSign</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/index.es6</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">&apos;use strict&apos;;
+
+import &apos;babel/register&apos;;
+import * as crypto from &apos;crypto&apos;;
+import * as path from &apos;path&apos;;
+import * as querystring from &apos;querystring&apos;;
+
+const CRLF = &apos;\r\n&apos;;
+
+/**
+ * Computes the HMAC
+ * @param {!string} key - The key
+ * @param {!string} data - The data to hash
+ * @param {?string} [encoding=binary] - The encoding type (hex|binary)
+ * @returns {string|buffer} - The output HMAC
+ */
+function hmac(key, data, encoding=&apos;binary&apos;) {
+	return crypto
+		.createHmac(&apos;sha256&apos;, key)
+		.update(data)
+		.digest(encoding);
+}
+
+/**
+ * Computes the hash
+ * @param {!string} data - The data to hash
+ * @returns {string} - The hashed output
+ */
+export function hash(data) {
+	return crypto
+		.createHash(&apos;sha256&apos;)
+		.update(data)
+		.digest(&apos;hex&apos;);
+}
+
+/**
+ * Formats a Date object to an AWS date string
+ * @param {!Date} date - The date
+ * @returns {string} - The formatted date string
+ */
+export function formatDateTime(date) {
+	return date.toISOString().replace(/-|:|(\.\d+)/g, &apos;&apos;);
+}
+
+/**
+ * Creates the canonical request
+ * https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
+ * @param {!string} httpRequestMethod - The HTTP request method (e.g. `GET` or `POST`)
+ * @param {!string} canonicalURI - The canonical URI
+ * @param {!string} canonicalQueryString - The canonical query string
+ * @param {!string} canonicalHeaders - The canonical headers
+ * @param {!string} signedHeaders - The signed headers
+ * @param {!string} requestPayload - The payload of the request
+ * @returns {string} - The canonical request
+ */
+export function canonicalRequest(httpRequestMethod, canonicalURI, canonicalQueryString, canonicalHeaders, signedHeaders,
+                                 requestPayload) {
+	return [
+		httpRequestMethod,
+		canonicalURI,
+		canonicalQueryString,
+		canonicalHeaders,
+		&apos;&apos;,
+		signedHeaders,
+		hash(requestPayload)
+	].join(&apos;\n&apos;);
+}
+
+/**
+ * Creates the string to sign
+ * https://docs.aws.amazon.com/general/latest/gr/sigv4-create-string-to-sign.html
+ * @param {!string} algorithm - The algorithm (`AWS4-HMAC-SHA256`)
+ * @param {!string} requestDate - The request date (`YYYMMDDThhmmssZ`)
+ * @param {!string} credentialScope - the credential scope (formatted as `YYYYMMDD/region/service/aws4_request`)
+ * @param {!string} hashedCanonicalRequest
+ * @returns {string} - The string to sign
+ */
+export function stringToSign(algorithm, requestDate, credentialScope, hashedCanonicalRequest) {
+	return [
+		algorithm,
+		requestDate,
+		credentialScope,
+		hashedCanonicalRequest
+	].join(&apos;\n&apos;);
+}
+
+/**
+ * Calculates the signature
+ * https://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html
+ * @param {!string} secretAccessKey - The secret access key for the AWS account
+ * @param {!string} date - The date in YYYYMMDD format
+ * @param {!string} region - The AWS region (e.g. `us-east-1`)
+ * @param {!string} service - The AWS service (e.g. `iam`)
+ * @param {!string} stringToSign - The string to sign
+ * @returns {string} - The signature
+ */
+export function sign(secretAccessKey, date, region, service, stringToSign) {
+	let signingKey = &apos;AWS4&apos; + secretAccessKey;
+
+	[
+		date,
+		region,
+		service,
+		&apos;aws4_request&apos;
+	].forEach(data =&gt; signingKey = hmac(signingKey, data));
+
+	return hmac(signingKey, stringToSign, &apos;hex&apos;);
+}
+
+/**
+ * Creates the authorization string
+ * https://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html
+ * @param algorithm
+ * @param accessKeyId
+ * @param credentialScope
+ * @param signedHeaders
+ * @param signature
+ * @returns {string}
+ */
+export function authorization(algorithm, accessKeyId, credentialScope, signedHeaders, signature) {
+	let auth = {
+		&apos;Credential&apos;: accessKeyId + &apos;/&apos; + credentialScope,
+		&apos;SignedHeaders&apos;: signedHeaders,
+		&apos;Signature&apos;: signature
+	};
+
+	return [
+		algorithm,
+		Object
+			.keys(auth)
+			.map(key =&gt; [key, auth[key]].join(&apos;=&apos;))
+			.join(&apos;, &apos;)
+	].join(&apos; &apos;);
+}
+
+/**
+ *
+ * @param action
+ * @param algorithm
+ * @param accessKeyId
+ * @param credentialScope
+ * @param date
+ * @param timeoutInterval
+ * @param signedHeaders
+ * @param signature
+ * @returns {*}
+ */
+export function querystringify(action, algorithm, accessKeyId, credentialScope, date, timeoutInterval, signedHeaders,
+                               signature) {
+	return action + querystring.stringify({
+		&apos;X-Amz-Algorithm&apos;: algorithm,
+		&apos;X-Amz-Credential&apos;: accessKeyId + &apos;/&apos; + credentialScope,
+		&apos;X-Amz-Date&apos;: date,
+		&apos;X-Amz-Expires&apos;: timeoutInterval,
+		&apos;X-Amz-SignedHeaders&apos;: signedHeaders,
+		&apos;X-Amz-Signature&apos;: signature
+	});
+}
+
+/**
+ *
+ * @param request
+ * @returns {{head: *, body: *}}
+ */
+export function parseRequest(request) {
+	let [head, body] = request.split(CRLF + CRLF);
+
+	return {head, body};
+}
+
+/**
+ *
+ * @param head
+ * @param body
+ * @returns {string}
+ */
+function unparseRequest(head, body) {
+	return [
+		head,
+		body
+	].join(CRLF.repeat(2));
+}
+
+/**
+ *
+ * @param head
+ * @returns {{method: string, requestURI: string, httpVersion: string, headers: Array.&lt;string&gt;}}
+ */
+export function parseHead(head) {
+	let lines = head.split(CRLF);
+	let requestLine = lines[0];
+	let headers = lines.slice(1);
+	let {method, requestURI, httpVersion} = parseRequestLine(requestLine);
+
+	return {method, requestURI, httpVersion, headers};
+}
+
+/**
+ *
+ * @param requestLine
+ * @returns {{method: string, requestURI: string, httpVersion: string}}
+ */
+function parseRequestLine(requestLine) {
+	let method = requestLine
+		.match(/^[A-Z]+\s/ig)[0];
+	let httpVersion = requestLine
+		.match(/\shttp\/\d+\.\d+$/ig)[0];
+	let requestURI = requestLine
+		.slice(method.length, -httpVersion.length);
+
+	return {
+		method: method.trim(),
+		requestURI: requestURI,
+		httpVersion: httpVersion.trim()
+	};
+}
+
+/**
+ *
+ * @param rawUrl
+ * @returns {{canonicalURI: (XMLList|XML), canonicalQueryString: string}}
+ */
+function parseUrl(rawUrl) {
+	let [uri, query] = rawUrl.split(/\?(.+)/);
+	let queryParams = {};
+	let canonicalQueryString = &apos;&apos;;
+
+	if (query) {
+		query.replace(/\s(.+)/g, &apos;&apos;)
+			.replace(/\+/g, &apos; &apos;)
+			.split(&apos;&amp;&apos;)
+			.forEach(param =&gt; {
+				let [name, val] = param.split(&apos;=&apos;);
+
+				if (name in queryParams) {
+					queryParams[name].push(val);
+				} else {
+					queryParams[name] = [val];
+				}
+			})
+		;
+
+		let queryParamsList = Object.keys(queryParams).sort();
+
+		canonicalQueryString = queryParamsList.map(key =&gt; {
+			return queryParams[key]
+				.sort()
+				.map(val =&gt; {
+					return [
+						encodeURIComponent(key),
+						encodeURIComponent(val || &apos;&apos;)
+					].join(&apos;=&apos;);
+				})
+				.join(&apos;&amp;&apos;);
+		}).join(&apos;&amp;&apos;);
+	}
+
+	return {
+		canonicalURI: path.normalize(uri),
+		canonicalQueryString
+	};
+}
+
+/**
+ *
+ * @param rawHeaders
+ * @returns {{canonicalHeadersString: string, signedHeadersString: string}}
+ */
+function parseCanonicalHeaders(rawHeaders) {
+	let headersMap = {};
+
+	rawHeaders.forEach(header =&gt; {
+		let [name, value] = header.split(/:(.+)/).slice(0, 2);
+
+		name = name.toLowerCase();
+		value = value.trim();
+
+		if (name in headersMap) {
+			headersMap[name].push(value);
+		} else {
+			headersMap[name] = [value];
+		}
+	});
+
+	let signedHeadersList = Object.keys(headersMap).sort();
+
+	let canonicalHeadersString = signedHeadersList.map(key =&gt; {
+		return [
+			key,
+			headersMap[key].sort().join(&apos;,&apos;)
+		].join(&apos;:&apos;);
+	}).join(&apos;\n&apos;);
+
+	let signedHeadersString = signedHeadersList.join(&apos;;&apos;);
+
+	return {canonicalHeadersString, signedHeadersString};
+}
+
+/**
+ *
+ * @param request
+ * @param authorization
+ * @returns {string}
+ */
+export function addAuthorization(request, authorization) {
+	let parsedRequest = parseRequest(request);
+
+	return unparseRequest(
+		parsedRequest.head + CRLF + &apos;Authorization: &apos; + authorization,
+		parsedRequest.body
+	);
+}
+
+/**
+ *
+ * @param request
+ * @returns {string}
+ */
+export function requestToCanonicalRequest(request) {
+	let parsedRequest = parseRequest(request);
+	let parsedHead = parseHead(parsedRequest.head);
+	let parsedUrl = parseUrl(parsedHead.requestURI);
+	let parsedHeaders = parseCanonicalHeaders(parsedHead.headers);
+
+	return canonicalRequest(
+		parsedHead.method,
+		parsedUrl.canonicalURI,
+		parsedUrl.canonicalQueryString,
+		parsedHeaders.canonicalHeadersString,
+		parsedHeaders.signedHeadersString,
+		parsedRequest.body
+	);
+}</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.4.1)</span></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>
