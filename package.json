@@ -8,7 +8,8 @@
   },
   "scripts": {
     "pretest": "gulp checkSuite",
-    "test": "mocha test/**/*.es6 --compilers js:babel/register"
+    "test": "mocha test/**/*.es6 --compilers js:babel/register",
+    "coverage": "`npm bin`/babel-node `npm bin`/istanbul cover _mocha -- -R spec --ui tdd"
   },
   "keywords": [
     "aws",
