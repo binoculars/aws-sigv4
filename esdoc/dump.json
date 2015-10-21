@@ -10,7 +10,7 @@
     "access": null,
     "description": null,
     "lineNumber": 1,
-    "content": "'use strict';\n\nimport 'babel/register';\nimport * as crypto from 'crypto';\nimport * as path from 'path';\nimport * as querystring from 'querystring';\n\nconst CRLF = '\\r\\n';\n\n/**\n * Computes the HMAC\n * @param {!string} key - The key\n * @param {!string} data - The data to hash\n * @param {?string} [encoding=binary] - The encoding type (hex|binary)\n * @returns {string|buffer} - The output HMAC\n */\nfunction hmac(key, data, encoding='binary') {\n\treturn crypto\n\t\t.createHmac('sha256', key)\n\t\t.update(data)\n\t\t.digest(encoding);\n}\n\n/**\n * Computes the hash\n * @param {!string} data - The data to hash\n * @returns {string} - The hashed output\n */\nexport function hash(data) {\n\treturn crypto\n\t\t.createHash('sha256')\n\t\t.update(data)\n\t\t.digest('hex');\n}\n\n/**\n * Formats a Date object to an AWS date string\n * @param {!Date} date - The date\n * @returns {string} - The formatted date string\n */\nexport function formatDateTime(date) {\n\treturn date.toISOString().replace(/-|:|(\\.\\d+)/g, '');\n}\n\n/**\n * Creates the canonical request\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html\n * @param {!string} httpRequestMethod - The HTTP request method (e.g. `GET` or `POST`)\n * @param {!string} canonicalURI - The canonical URI\n * @param {!string} canonicalQueryString - The canonical query string\n * @param {!string} canonicalHeaders - The canonical headers\n * @param {!string} signedHeaders - The signed headers\n * @param {!string} requestPayload - The payload of the request\n * @returns {string} - The canonical request\n */\nexport function canonicalRequest(httpRequestMethod, canonicalURI, canonicalQueryString, canonicalHeaders, signedHeaders,\n                                 requestPayload) {\n\treturn [\n\t\thttpRequestMethod,\n\t\tcanonicalURI,\n\t\tcanonicalQueryString,\n\t\tcanonicalHeaders,\n\t\t'',\n\t\tsignedHeaders,\n\t\thash(requestPayload)\n\t].join('\\n');\n}\n\n/**\n * Creates the string to sign\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-create-string-to-sign.html\n * @param {!string} algorithm - The algorithm (`AWS4-HMAC-SHA256`)\n * @param {!string} requestDate - The request date (`YYYMMDDThhmmssZ`)\n * @param {!string} credentialScope - the credential scope (formatted as `YYYYMMDD/region/service/aws4_request`)\n * @param {!string} hashedCanonicalRequest\n * @returns {string} - The string to sign\n */\nexport function stringToSign(algorithm, requestDate, credentialScope, hashedCanonicalRequest) {\n\treturn [\n\t\talgorithm,\n\t\trequestDate,\n\t\tcredentialScope,\n\t\thashedCanonicalRequest\n\t].join('\\n');\n}\n\n/**\n * Calculates the signature\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html\n * @param {!string} secretAccessKey - The secret access key for the AWS account\n * @param {!string} date - The date in YYYYMMDD format\n * @param {!string} region - The AWS region (e.g. `us-east-1`)\n * @param {!string} service - The AWS service (e.g. `iam`)\n * @param {!string} stringToSign - The string to sign\n * @returns {string} - The signature\n */\nexport function sign(secretAccessKey, date, region, service, stringToSign) {\n\tlet signingKey = 'AWS4' + secretAccessKey;\n\n\t[\n\t\tdate,\n\t\tregion,\n\t\tservice,\n\t\t'aws4_request'\n\t].forEach(data => signingKey = hmac(signingKey, data));\n\n\treturn hmac(signingKey, stringToSign, 'hex');\n}\n\n/**\n * Creates the authorization string\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html\n * @param algorithm\n * @param accessKeyId\n * @param credentialScope\n * @param signedHeaders\n * @param signature\n * @returns {string}\n */\nexport function authorization(algorithm, accessKeyId, credentialScope, signedHeaders, signature) {\n\tlet auth = {\n\t\t'Credential': accessKeyId + '/' + credentialScope,\n\t\t'SignedHeaders': signedHeaders,\n\t\t'Signature': signature\n\t};\n\n\treturn [\n\t\talgorithm,\n\t\tObject\n\t\t\t.keys(auth)\n\t\t\t.map(key => [key, auth[key]].join('='))\n\t\t\t.join(', ')\n\t].join(' ');\n}\n\n/**\n *\n * @param action\n * @param algorithm\n * @param accessKeyId\n * @param credentialScope\n * @param date\n * @param timeoutInterval\n * @param signedHeaders\n * @param signature\n * @returns {*}\n */\nexport function querystringify(action, algorithm, accessKeyId, credentialScope, date, timeoutInterval, signedHeaders,\n                               signature) {\n\treturn action + querystring.stringify({\n\t\t'X-Amz-Algorithm': algorithm,\n\t\t'X-Amz-Credential': accessKeyId + '/' + credentialScope,\n\t\t'X-Amz-Date': date,\n\t\t'X-Amz-Expires': timeoutInterval,\n\t\t'X-Amz-SignedHeaders': signedHeaders,\n\t\t'X-Amz-Signature': signature\n\t});\n}\n\n/**\n *\n * @param request\n * @returns {{head: *, body: *}}\n */\nexport function parseRequest(request) {\n\tlet [head, body] = request.split(CRLF + CRLF);\n\n\treturn {head, body};\n}\n\n/**\n *\n * @param head\n * @param body\n * @returns {string}\n */\nfunction unparseRequest(head, body) {\n\treturn [\n\t\thead,\n\t\tbody\n\t].join(CRLF.repeat(2));\n}\n\n/**\n *\n * @param head\n * @returns {{method: string, requestURI: string, httpVersion: string, headers: Array.<string>}}\n */\nexport function parseHead(head) {\n\tlet lines = head.split(CRLF);\n\tlet requestLine = lines[0];\n\tlet headers = lines.slice(1);\n\tlet {method, requestURI, httpVersion} = parseRequestLine(requestLine);\n\n\treturn {method, requestURI, httpVersion, headers};\n}\n\n/**\n *\n * @param requestLine\n * @returns {{method: string, requestURI: string, httpVersion: string}}\n */\nfunction parseRequestLine(requestLine) {\n\tlet method = requestLine\n\t\t.match(/^[A-Z]+\\s/ig)[0];\n\tlet httpVersion = requestLine\n\t\t.match(/\\shttp\\/\\d+\\.\\d+$/ig)[0];\n\tlet requestURI = requestLine\n\t\t.slice(method.length, -httpVersion.length);\n\n\treturn {\n\t\tmethod: method.trim(),\n\t\trequestURI: requestURI,\n\t\thttpVersion: httpVersion.trim()\n\t};\n}\n\n/**\n *\n * @param rawUrl\n * @returns {{canonicalURI: (XMLList|XML), canonicalQueryString: string}}\n */\nfunction parseUrl(rawUrl) {\n\tlet [uri, query] = rawUrl.split(/\\?(.+)/);\n\tlet queryParams = {};\n\tlet canonicalQueryString = '';\n\n\tif (query) {\n\t\tquery.replace(/\\s(.+)/g, '')\n\t\t\t.replace(/\\+/g, ' ')\n\t\t\t.split('&')\n\t\t\t.forEach(param => {\n\t\t\t\tlet [name, val] = param.split('=');\n\n\t\t\t\tif (name in queryParams) {\n\t\t\t\t\tqueryParams[name].push(val);\n\t\t\t\t} else {\n\t\t\t\t\tqueryParams[name] = [val];\n\t\t\t\t}\n\t\t\t})\n\t\t;\n\n\t\tlet queryParamsList = Object.keys(queryParams).sort();\n\n\t\tcanonicalQueryString = queryParamsList.map(key => {\n\t\t\treturn queryParams[key]\n\t\t\t\t.sort()\n\t\t\t\t.map(val => {\n\t\t\t\t\treturn [\n\t\t\t\t\t\tencodeURIComponent(key),\n\t\t\t\t\t\tencodeURIComponent(val || '')\n\t\t\t\t\t].join('=');\n\t\t\t\t})\n\t\t\t\t.join('&');\n\t\t}).join('&');\n\t}\n\n\treturn {\n\t\tcanonicalURI: path.normalize(uri),\n\t\tcanonicalQueryString\n\t};\n}\n\n/**\n *\n * @param rawHeaders\n * @returns {{canonicalHeadersString: string, signedHeadersString: string}}\n */\nfunction parseCanonicalHeaders(rawHeaders) {\n\tlet headersMap = {};\n\n\trawHeaders.forEach(header => {\n\t\tlet [name, value] = header.split(/:(.+)/).slice(0, 2);\n\n\t\tname = name.toLowerCase();\n\t\tvalue = value.trim();\n\n\t\tif (name in headersMap) {\n\t\t\theadersMap[name].push(value);\n\t\t} else {\n\t\t\theadersMap[name] = [value];\n\t\t}\n\t});\n\n\tlet signedHeadersList = Object.keys(headersMap).sort();\n\n\tlet canonicalHeadersString = signedHeadersList.map(key => {\n\t\treturn [\n\t\t\tkey,\n\t\t\theadersMap[key].sort().join(',')\n\t\t].join(':');\n\t}).join('\\n');\n\n\tlet signedHeadersString = signedHeadersList.join(';');\n\n\treturn {canonicalHeadersString, signedHeadersString};\n}\n\n/**\n *\n * @param request\n * @param authorization\n * @returns {string}\n */\nexport function addAuthorization(request, authorization) {\n\tlet parsedRequest = parseRequest(request);\n\n\treturn unparseRequest(\n\t\tparsedRequest.head + CRLF + 'Authorization: ' + authorization,\n\t\tparsedRequest.body\n\t);\n}\n\n/**\n *\n * @param request\n * @returns {string}\n */\nexport function requestToCanonicalRequest(request) {\n\tlet parsedRequest = parseRequest(request);\n\tlet parsedHead = parseHead(parsedRequest.head);\n\tlet parsedUrl = parseUrl(parsedHead.requestURI);\n\tlet parsedHeaders = parseCanonicalHeaders(parsedHead.headers);\n\n\treturn canonicalRequest(\n\t\tparsedHead.method,\n\t\tparsedUrl.canonicalURI,\n\t\tparsedUrl.canonicalQueryString,\n\t\tparsedHeaders.canonicalHeadersString,\n\t\tparsedHeaders.signedHeadersString,\n\t\tparsedRequest.body\n\t);\n}"
+    "content": "'use strict';\n\nimport * as crypto from 'crypto';\nimport * as path from 'path';\nimport * as querystring from 'querystring';\n\nconst CRLF = '\\r\\n';\n\n/**\n * Computes the HMAC\n * @param {!string} key - The key\n * @param {!string} data - The data to hash\n * @param {?string} [encoding=binary] - The encoding type (hex|binary)\n * @returns {string|buffer} - The output HMAC\n */\nfunction hmac(key, data, encoding='binary') {\n\treturn crypto\n\t\t.createHmac('sha256', key)\n\t\t.update(data)\n\t\t.digest(encoding);\n}\n\n/**\n * Computes the hash\n * @param {!string} data - The data to hash\n * @returns {string} - The hashed output\n */\nexport function hash(data) {\n\treturn crypto\n\t\t.createHash('sha256')\n\t\t.update(data)\n\t\t.digest('hex');\n}\n\n/**\n * Formats a Date object to an AWS date string\n * @param {!Date} date - The date\n * @returns {string} - The formatted date string\n */\nexport function formatDateTime(date) {\n\treturn date.toISOString().replace(/-|:|(\\.\\d+)/g, '');\n}\n\n/**\n * Creates the canonical request\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html\n * @param {!string} httpRequestMethod - The HTTP request method (e.g. `GET` or `POST`)\n * @param {!string} canonicalURI - The canonical URI\n * @param {!string} canonicalQueryString - The canonical query string\n * @param {!string} canonicalHeaders - The canonical headers\n * @param {!string} signedHeaders - The signed headers\n * @param {!string} requestPayload - The payload of the request\n * @returns {string} - The canonical request\n */\nexport function canonicalRequest(httpRequestMethod, canonicalURI, canonicalQueryString, canonicalHeaders, signedHeaders,\n                                 requestPayload) {\n\treturn [\n\t\thttpRequestMethod,\n\t\tcanonicalURI,\n\t\tcanonicalQueryString,\n\t\tcanonicalHeaders,\n\t\t'',\n\t\tsignedHeaders,\n\t\thash(requestPayload)\n\t].join('\\n');\n}\n\n/**\n * Creates the string to sign\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-create-string-to-sign.html\n * @param {!string} algorithm - The algorithm (`AWS4-HMAC-SHA256`)\n * @param {!string} requestDate - The request date (`YYYMMDDThhmmssZ`)\n * @param {!string} credentialScope - the credential scope (formatted as `YYYYMMDD/region/service/aws4_request`)\n * @param {!string} hashedCanonicalRequest\n * @returns {string} - The string to sign\n */\nexport function stringToSign(algorithm, requestDate, credentialScope, hashedCanonicalRequest) {\n\treturn [\n\t\talgorithm,\n\t\trequestDate,\n\t\tcredentialScope,\n\t\thashedCanonicalRequest\n\t].join('\\n');\n}\n\n/**\n * Calculates the signature\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html\n * @param {!string} secretAccessKey - The secret access key for the AWS account\n * @param {!string} date - The date in YYYYMMDD format\n * @param {!string} region - The AWS region (e.g. `us-east-1`)\n * @param {!string} service - The AWS service (e.g. `iam`)\n * @param {!string} stringToSign - The string to sign\n * @returns {string} - The signature\n */\nexport function sign(secretAccessKey, date, region, service, stringToSign) {\n\tlet signingKey = 'AWS4' + secretAccessKey;\n\n\t[\n\t\tdate,\n\t\tregion,\n\t\tservice,\n\t\t'aws4_request'\n\t].forEach(data => signingKey = hmac(signingKey, data));\n\n\treturn hmac(signingKey, stringToSign, 'hex');\n}\n\n/**\n * Creates the authorization string\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html\n * @param algorithm\n * @param accessKeyId\n * @param credentialScope\n * @param signedHeaders\n * @param signature\n * @returns {string}\n */\nexport function authorization(algorithm, accessKeyId, credentialScope, signedHeaders, signature) {\n\tlet auth = {\n\t\t'Credential': accessKeyId + '/' + credentialScope,\n\t\t'SignedHeaders': signedHeaders,\n\t\t'Signature': signature\n\t};\n\n\treturn [\n\t\talgorithm,\n\t\tObject\n\t\t\t.keys(auth)\n\t\t\t.map(key => [key, auth[key]].join('='))\n\t\t\t.join(', ')\n\t].join(' ');\n}\n\n/**\n *\n * @param action\n * @param algorithm\n * @param accessKeyId\n * @param credentialScope\n * @param date\n * @param timeoutInterval\n * @param signedHeaders\n * @param signature\n * @returns {*}\n */\nexport function querystringify(action, algorithm, accessKeyId, credentialScope, date, timeoutInterval, signedHeaders,\n                               signature) {\n\treturn action + querystring.stringify({\n\t\t'X-Amz-Algorithm': algorithm,\n\t\t'X-Amz-Credential': accessKeyId + '/' + credentialScope,\n\t\t'X-Amz-Date': date,\n\t\t'X-Amz-Expires': timeoutInterval,\n\t\t'X-Amz-SignedHeaders': signedHeaders,\n\t\t'X-Amz-Signature': signature\n\t});\n}\n\n/**\n *\n * @param request\n * @returns {{head: *, body: *}}\n */\nexport function parseRequest(request) {\n\tlet [head, body] = request.split(CRLF + CRLF);\n\n\treturn {head, body};\n}\n\n/**\n *\n * @param head\n * @param body\n * @returns {string}\n */\nfunction unparseRequest(head, body) {\n\treturn [\n\t\thead,\n\t\tbody\n\t].join(CRLF.repeat(2));\n}\n\n/**\n *\n * @param head\n * @returns {{method: string, requestURI: string, httpVersion: string, headers: Array.<string>}}\n */\nexport function parseHead(head) {\n\tlet lines = head.split(CRLF);\n\tlet requestLine = lines[0];\n\tlet headers = lines.slice(1);\n\tlet {method, requestURI, httpVersion} = parseRequestLine(requestLine);\n\n\treturn {method, requestURI, httpVersion, headers};\n}\n\n/**\n *\n * @param requestLine\n * @returns {{method: string, requestURI: string, httpVersion: string}}\n */\nfunction parseRequestLine(requestLine) {\n\tlet method = requestLine\n\t\t.match(/^[A-Z]+\\s/ig)[0];\n\tlet httpVersion = requestLine\n\t\t.match(/\\shttp\\/\\d+\\.\\d+$/ig)[0];\n\tlet requestURI = requestLine\n\t\t.slice(method.length, -httpVersion.length);\n\n\treturn {\n\t\tmethod: method.trim(),\n\t\trequestURI: requestURI,\n\t\thttpVersion: httpVersion.trim()\n\t};\n}\n\n/**\n *\n * @param rawUrl\n * @returns {{canonicalURI: (XMLList|XML), canonicalQueryString: string}}\n */\nfunction parseUrl(rawUrl) {\n\tlet [uri, query] = rawUrl.split(/\\?(.+)/);\n\tlet queryParams = {};\n\tlet canonicalQueryString = '';\n\n\tif (query) {\n\t\tquery.replace(/\\s(.+)/g, '')\n\t\t\t.replace(/\\+/g, ' ')\n\t\t\t.split('&')\n\t\t\t.forEach(param => {\n\t\t\t\tlet [name, val] = param.split('=');\n\n\t\t\t\tif (name in queryParams) {\n\t\t\t\t\tqueryParams[name].push(val);\n\t\t\t\t} else {\n\t\t\t\t\tqueryParams[name] = [val];\n\t\t\t\t}\n\t\t\t})\n\t\t;\n\n\t\tlet queryParamsList = Object.keys(queryParams).sort();\n\n\t\tcanonicalQueryString = queryParamsList.map(key => {\n\t\t\treturn queryParams[key]\n\t\t\t\t.sort()\n\t\t\t\t.map(val => {\n\t\t\t\t\treturn [\n\t\t\t\t\t\tencodeURIComponent(key),\n\t\t\t\t\t\tencodeURIComponent(val || '')\n\t\t\t\t\t].join('=');\n\t\t\t\t})\n\t\t\t\t.join('&');\n\t\t}).join('&');\n\t}\n\n\treturn {\n\t\tcanonicalURI: path.normalize(uri),\n\t\tcanonicalQueryString\n\t};\n}\n\n/**\n *\n * @param rawHeaders\n * @returns {{canonicalHeadersString: string, signedHeadersString: string}}\n */\nfunction parseCanonicalHeaders(rawHeaders) {\n\tlet headersMap = {};\n\n\trawHeaders.forEach(header => {\n\t\tlet [name, value] = header.split(/:(.+)/).slice(0, 2);\n\n\t\tname = name.toLowerCase();\n\t\tvalue = value.trim();\n\n\t\tif (name in headersMap) {\n\t\t\theadersMap[name].push(value);\n\t\t} else {\n\t\t\theadersMap[name] = [value];\n\t\t}\n\t});\n\n\tlet signedHeadersList = Object.keys(headersMap).sort();\n\n\tlet canonicalHeadersString = signedHeadersList.map(key => {\n\t\treturn [\n\t\t\tkey,\n\t\t\theadersMap[key].sort().join(',')\n\t\t].join(':');\n\t}).join('\\n');\n\n\tlet signedHeadersString = signedHeadersList.join(';');\n\n\treturn {canonicalHeadersString, signedHeadersString};\n}\n\n/**\n *\n * @param request\n * @param authorization\n * @returns {string}\n */\nexport function addAuthorization(request, authorization) {\n\tlet parsedRequest = parseRequest(request);\n\n\treturn unparseRequest(\n\t\tparsedRequest.head + CRLF + 'Authorization: ' + authorization,\n\t\tparsedRequest.body\n\t);\n}\n\n/**\n *\n * @param request\n * @returns {string}\n */\nexport function requestToCanonicalRequest(request) {\n\tlet parsedRequest = parseRequest(request);\n\tlet parsedHead = parseHead(parsedRequest.head);\n\tlet parsedUrl = parseUrl(parsedHead.requestURI);\n\tlet parsedHeaders = parseCanonicalHeaders(parsedHead.headers);\n\n\treturn canonicalRequest(\n\t\tparsedHead.method,\n\t\tparsedUrl.canonicalURI,\n\t\tparsedUrl.canonicalQueryString,\n\t\tparsedHeaders.canonicalHeadersString,\n\t\tparsedHeaders.signedHeadersString,\n\t\tparsedRequest.body\n\t);\n}"
   },
   {
     "__docId__": 1,
@@ -25,7 +25,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": null,
     "description": null,
-    "lineNumber": 8,
+    "lineNumber": 7,
     "undocument": true,
     "type": {
       "types": [
@@ -46,7 +46,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": null,
     "description": "Computes the HMAC",
-    "lineNumber": 17,
+    "lineNumber": 16,
     "unknown": [
       {
         "tagName": "@returns",
@@ -111,7 +111,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": "{hash}",
     "description": "Computes the hash",
-    "lineNumber": 29,
+    "lineNumber": 28,
     "unknown": [
       {
         "tagName": "@returns",
@@ -153,7 +153,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": "{formatDateTime}",
     "description": "Formats a Date object to an AWS date string",
-    "lineNumber": 41,
+    "lineNumber": 40,
     "unknown": [
       {
         "tagName": "@returns",
@@ -195,7 +195,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": "{canonicalRequest}",
     "description": "Creates the canonical request\nhttps://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html",
-    "lineNumber": 56,
+    "lineNumber": 55,
     "unknown": [
       {
         "tagName": "@returns",
@@ -287,7 +287,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": "{stringToSign}",
     "description": "Creates the string to sign\nhttps://docs.aws.amazon.com/general/latest/gr/sigv4-create-string-to-sign.html",
-    "lineNumber": 78,
+    "lineNumber": 77,
     "unknown": [
       {
         "tagName": "@returns",
@@ -359,7 +359,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": "{sign}",
     "description": "Calculates the signature\nhttps://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html",
-    "lineNumber": 97,
+    "lineNumber": 96,
     "unknown": [
       {
         "tagName": "@returns",
@@ -441,7 +441,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": "{authorization}",
     "description": "Creates the authorization string\nhttps://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html",
-    "lineNumber": 120,
+    "lineNumber": 119,
     "unknown": [
       {
         "tagName": "@returns",
@@ -523,7 +523,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": "{querystringify}",
     "description": "",
-    "lineNumber": 148,
+    "lineNumber": 147,
     "unknown": [
       {
         "tagName": "@returns",
@@ -635,7 +635,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": "{parseRequest}",
     "description": "",
-    "lineNumber": 165,
+    "lineNumber": 164,
     "unknown": [
       {
         "tagName": "@returns",
@@ -677,7 +677,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": null,
     "description": "",
-    "lineNumber": 177,
+    "lineNumber": 176,
     "unknown": [
       {
         "tagName": "@returns",
@@ -729,7 +729,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": "{parseHead}",
     "description": "",
-    "lineNumber": 189,
+    "lineNumber": 188,
     "unknown": [
       {
         "tagName": "@returns",
@@ -771,7 +771,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": null,
     "description": "",
-    "lineNumber": 203,
+    "lineNumber": 202,
     "unknown": [
       {
         "tagName": "@returns",
@@ -813,7 +813,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": null,
     "description": "",
-    "lineNumber": 223,
+    "lineNumber": 222,
     "unknown": [
       {
         "tagName": "@returns",
@@ -856,7 +856,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": null,
     "description": "",
-    "lineNumber": 269,
+    "lineNumber": 268,
     "unknown": [
       {
         "tagName": "@returns",
@@ -898,7 +898,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": "{addAuthorization}",
     "description": "",
-    "lineNumber": 305,
+    "lineNumber": 304,
     "unknown": [
       {
         "tagName": "@returns",
@@ -950,7 +950,7 @@
     "importPath": "aws-sigv4/src/index.es6",
     "importStyle": "{requestToCanonicalRequest}",
     "description": "",
-    "lineNumber": 319,
+    "lineNumber": 318,
     "unknown": [
       {
         "tagName": "@returns",
