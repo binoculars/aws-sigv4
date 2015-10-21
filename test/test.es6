@@ -2,7 +2,6 @@
 
 /*eslint-env node, mocha */
 
-import 'babel/register';
 import lint from 'mocha-eslint';
 import * as assert from 'assert';
 import * as path from 'path';
@@ -196,7 +195,7 @@ const fs = Promise.promisifyAll(require('fs'));
 							stringToSign,
 							authorizationHeader,
 							signedRequest
-							] = results.map(r => r.value());
+						] = results.map(r => r.value());
 
 						canonicalRequest = canonicalRequest.replace(/\r/g, '');
 						stringToSign = stringToSign.replace(/\r/g, '');

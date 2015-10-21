@@ -6,3 +6,4 @@ An AWS Signature Version 4 library
 [![ESDoc](http://binoculars.github.io/aws-sigv4/esdoc/badge.svg)](http://binoculars.github.io/aws-sigv4/esdoc/)
 [![Dependency Status](https://david-dm.org/binoculars/aws-sigv4.svg)](https://david-dm.org/binoculars/aws-sigv4)
 [![devDependency Status](https://david-dm.org/binoculars/aws-sigv4/dev-status.svg)](https://david-dm.org/binoculars/aws-sigv4#info=devDependencies)
+[![Coverage Status](https://coveralls.io/repos/binoculars/aws-sigv4/badge.svg?branch=master&service=github)](https://coveralls.io/github/binoculars/aws-sigv4?branch=master)

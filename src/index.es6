@@ -1,6 +1,5 @@
 'use strict';
 
-import 'babel/register';
 import * as crypto from 'crypto';
 import * as path from 'path';
 import * as querystring from 'querystring';
