@@ -1,8 +1,8 @@
 'use strict';
 
-import * as crypto from 'crypto';
-import * as path from 'path';
-import * as querystring from 'querystring';
+import {createHmac, createHash} from 'crypto';
+import {normalize} from 'path';
+import {stringify} from 'querystring';
 
 const CRLF = '\r\n';
 
@@ -14,8 +14,7 @@ const CRLF = '\r\n';
  * @returns {string|buffer} - The output HMAC
  */
 function hmac(key, data, encoding='binary') {
-	return crypto
-		.createHmac('sha256', key)
+	return createHmac('sha256', key)
 		.update(data)
 		.digest(encoding);
 }
@@ -26,8 +25,7 @@ function hmac(key, data, encoding='binary') {
  * @returns {string} - The hashed output
  */
 export function hash(data) {
-	return crypto
-		.createHash('sha256')
+	return createHash('sha256')
 		.update(data)
 		.digest('hex');
 }
@@ -142,11 +140,11 @@ export function authorization(algorithm, accessKeyId, credentialScope, signedHea
  * @param timeoutInterval
  * @param signedHeaders
  * @param signature
- * @returns {*}
+ * @returns {string}
  */
 export function querystringify(action, algorithm, accessKeyId, credentialScope, date, timeoutInterval, signedHeaders,
                                signature) {
-	return action + querystring.stringify({
+	return action + stringify({
 		'X-Amz-Algorithm': algorithm,
 		'X-Amz-Credential': accessKeyId + '/' + credentialScope,
 		'X-Amz-Date': date,
@@ -159,7 +157,7 @@ export function querystringify(action, algorithm, accessKeyId, credentialScope, 
 /**
  *
  * @param request
- * @returns {{head: *, body: *}}
+ * @returns {{head: string, body: string}}
  */
 export function parseRequest(request) {
 	let [head, body] = request.split(CRLF + CRLF);
@@ -255,7 +253,7 @@ function parseUrl(rawUrl) {
 	}
 
 	return {
-		canonicalURI: path.normalize(uri),
+		canonicalURI: normalize(uri),
 		canonicalQueryString
 	};
 }
