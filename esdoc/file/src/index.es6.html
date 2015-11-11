@@ -50,9 +50,9 @@
 <div class="content" data-ice="content"><h1 data-ice="title">src/index.es6</h1>
 <pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">&apos;use strict&apos;;
 
-import * as crypto from &apos;crypto&apos;;
-import * as path from &apos;path&apos;;
-import * as querystring from &apos;querystring&apos;;
+import {createHmac, createHash} from &apos;crypto&apos;;
+import {normalize} from &apos;path&apos;;
+import {stringify} from &apos;querystring&apos;;
 
 const CRLF = &apos;\r\n&apos;;
 
@@ -64,8 +64,7 @@ const CRLF = &apos;\r\n&apos;;
  * @returns {string|buffer} - The output HMAC
  */
 function hmac(key, data, encoding=&apos;binary&apos;) {
-	return crypto
-		.createHmac(&apos;sha256&apos;, key)
+	return createHmac(&apos;sha256&apos;, key)
 		.update(data)
 		.digest(encoding);
 }
@@ -76,8 +75,7 @@ function hmac(key, data, encoding=&apos;binary&apos;) {
  * @returns {string} - The hashed output
  */
 export function hash(data) {
-	return crypto
-		.createHash(&apos;sha256&apos;)
+	return createHash(&apos;sha256&apos;)
 		.update(data)
 		.digest(&apos;hex&apos;);
 }
@@ -192,11 +190,11 @@ export function authorization(algorithm, accessKeyId, credentialScope, signedHea
  * @param timeoutInterval
  * @param signedHeaders
  * @param signature
- * @returns {*}
+ * @returns {string}
  */
 export function querystringify(action, algorithm, accessKeyId, credentialScope, date, timeoutInterval, signedHeaders,
                                signature) {
-	return action + querystring.stringify({
+	return action + stringify({
 		&apos;X-Amz-Algorithm&apos;: algorithm,
 		&apos;X-Amz-Credential&apos;: accessKeyId + &apos;/&apos; + credentialScope,
 		&apos;X-Amz-Date&apos;: date,
@@ -209,7 +207,7 @@ export function querystringify(action, algorithm, accessKeyId, credentialScope, 
 /**
  *
  * @param request
- * @returns {{head: *, body: *}}
+ * @returns {{head: string, body: string}}
  */
 export function parseRequest(request) {
 	let [head, body] = request.split(CRLF + CRLF);
@@ -305,7 +303,7 @@ function parseUrl(rawUrl) {
 	}
 
 	return {
-		canonicalURI: path.normalize(uri),
+		canonicalURI: normalize(uri),
 		canonicalQueryString
 	};
 }

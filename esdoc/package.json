@@ -1,6 +1,6 @@
 {
   "name": "aws-sigv4",
-  "version": "1.0.1",
+  "version": "1.1.2",
   "description": "AWS Signature Version 4",
   "main": "lib/index.js",
   "directories": {
@@ -18,8 +18,8 @@
   "author": "Barrett K. Harber <barrett.harber@gmail.com>",
   "license": "Unlicense",
   "dependencies": {
-    "babel": "^5.8.23",
-    "bluebird": "^2.10.2"
+    "babel": "^5.8.26",
+    "bluebird": "^3.0.5"
   },
   "devDependencies": {
     "coveralls": "^2.11.4",
@@ -27,11 +27,45 @@
     "gulp": "^3.9.0",
     "gulp-download": "0.0.1",
     "gulp-unzip": "^0.1.3",
+    "gulp-util": "^3.0.7",
+    "isparta": "^3.5.3",
     "istanbul": "^0.4.0",
     "mocha": "^2.3.3",
     "mocha-eslint": "^1.0.0"
   },
   "babel": {},
+  "eslintConfig": {
+    "ecmaFeatures": {
+      "modules": true
+    },
+    "rules": {
+      "indent": [
+        2,
+        "tab"
+      ],
+      "quotes": [
+        2,
+        "single"
+      ],
+      "linebreak-style": [
+        2,
+        "unix"
+      ],
+      "semi": [
+        2,
+        "always"
+      ],
+      "no-mixed-spaces-and-tabs": [
+        2,
+        "smart-tabs"
+      ]
+    },
+    "env": {
+      "es6": true,
+      "browser": false
+    },
+    "extends": "eslint:recommended"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/binoculars/aws-sigv4.git"
@@ -39,5 +73,5 @@
   "bugs": {
     "url": "https://github.com/binoculars/aws-sigv4/issues"
   },
-  "homepage": "https://github.com/binoculars/aws-sigv4"
+  "homepage": "https://binoculars.github.io/aws-sigv4/"
 }
