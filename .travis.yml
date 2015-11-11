@@ -5,4 +5,4 @@ before_script:
   - npm install -g gulp
 script:
   - npm run-script coverage
-  - `npm bin`/coveralls < coverage/lcov.info
+  - "`npm bin`/coveralls < coverage/lcov.info"
