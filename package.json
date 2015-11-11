@@ -1,6 +1,6 @@
 {
   "name": "aws-sigv4",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "AWS Signature Version 4",
   "main": "lib/index.js",
   "directories": {
@@ -32,8 +32,7 @@
     "mocha": "^2.3.3",
     "mocha-eslint": "^1.0.0"
   },
-  "babel": {
-  },
+  "babel": {},
   "eslintConfig": {
     "ecmaFeatures": {
       "modules": true
