@@ -3,6 +3,6 @@ node_js:
   - "0.10.36"
 before_script:
   - npm install -g gulp
-script:
-  - npm run-script coverage
-  - "`npm bin`/coveralls < coverage/lcov.info"
+#script:
+  #- npm run-script coverage
+  #- "`npm bin`/coveralls < coverage/lcov.info"
