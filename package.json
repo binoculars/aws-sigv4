@@ -18,10 +18,10 @@
   "author": "Barrett K. Harber <barrett.harber@gmail.com>",
   "license": "Unlicense",
   "dependencies": {
-    "babel": "^5.8.26",
-    "bluebird": "^3.0.5"
   },
   "devDependencies": {
+    "babel": "^5.8.26",
+    "bluebird": "^3.0.5",
     "coveralls": "^2.11.4",
     "eslint": "^1.7.1",
     "gulp": "^3.9.0",
