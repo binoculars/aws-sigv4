@@ -5,10 +5,12 @@
 import lint from 'mocha-eslint';
 import * as assert from 'assert';
 import * as path from 'path';
+import 'babel-polyfill';
 import * as Promise from 'bluebird';
 import * as sigv4 from '../src/index.es6';
+import * as fsCallback from 'fs';
 
-const fs = Promise.promisifyAll(require('fs'));
+const fs = Promise.promisifyAll(fsCallback);
 
 /**
  * Mocha ESLint
