@@ -1,0 +1,26 @@
+---
+engines:
+  duplication:
+    enabled: true
+    config:
+      languages:
+      - javascript
+  eslint:
+    enabled: true
+    config:
+      extensions:
+      - .es6
+  fixme:
+    enabled: true
+  nodesecurity:
+    enabled: true
+ratings:
+  paths:
+  - "**.es6"
+exclude_paths:
+- node_modules/
+- test/
+- gh-pages/
+- coverage/
+- .*/
+- lib/
