@@ -4,13 +4,10 @@
 
 import lint from 'mocha-eslint';
 import * as assert from 'assert';
-import * as path from 'path';
+import {join} from 'path';
 import 'babel-polyfill';
-import * as Promise from 'bluebird';
 import * as sigv4 from '../src/index.es6';
-import * as fsCallback from 'fs';
-
-const fs = Promise.promisifyAll(fsCallback);
+import * as fs from 'fs';
 
 /**
  * Mocha ESLint
@@ -48,7 +45,7 @@ describe('Signing AWS Requests', () => {
 					'/',
 					'',
 					'content-type:application/x-www-form-urlencoded; charset=utf-8\nhost:iam.amazonaws.com\nx-amz' +
-						'-date:20110909T233600Z',
+					'-date:20110909T233600Z',
 					signedHeaders,
 					requestPayload
 				),
@@ -148,21 +145,19 @@ describe('Signing AWS Requests', () => {
 	});
 });
 
+
 /**
  * AWS Signature Version 4 Test Suite
  * Implements https://docs.aws.amazon.com/general/latest/gr/signature-v4-test-suite.html
  */
-let suiteDir = path.join(__dirname, 'fixtures/aws4_testsuite/');
-
-fs.readdirAsync(suiteDir).then(files => {
+{
+	let suiteDir = join(__dirname, 'fixtures/aws4_testsuite/');
 	let algorithm = 'AWS4-HMAC-SHA256';
 	let accessKeyId = 'AKIDEXAMPLE';
-	let requestDate = sigv4.formatDateTime(new Date('Mon, 09 Sep 2011 23:36:00 GMT'));
-	let credentialScope = '20110909/us-east-1/host/aws4_request';
+	let requestDate = sigv4.formatDateTime(new Date('Sun, 30 Aug 2015 12:36:00 GMT'));
+	let credentialScope = '20150830/us-east-1/service/aws4_request';
 	let secretAccessKey = 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
-	let groups = files
-		.filter(file => file.slice(-5) === '.sreq')
-		.map(file => file.slice(0, -5));
+	let groups = fs.readdirSync(suiteDir).filter(item => item !== 'get-vanilla-ut8-query');
 
 	groups.forEach(group => {
 		describe('Test Suite: ' + group, () => {
@@ -173,28 +168,21 @@ fs.readdirAsync(suiteDir).then(files => {
 				signedRequest;
 
 			before(done => {
-				let files = [
+				[
+					request,
+					canonicalRequest,
+					stringToSign,
+					authorizationHeader,
+					signedRequest
+				] = [
 					'req',   // <file-name>.req—the web request to be signed.
 					'creq',  // <file-name>.creq—the resulting canonical request.
 					'sts',   // <file-name>.sts—the resulting string to sign.
 					'authz', // <file-name>.authz—the Authorization header.
 					'sreq'   // <file-name>.sreq— the signed request.
-				].map(ext => fs.readFileAsync(path.join(suiteDir, group + '.' + ext), 'utf8'));
+				].map(ext => fs.readFileSync(join(suiteDir, group, group + '.' + ext), 'utf8'));
 
-				Promise.settle(files).then(results => {
-					[
-						request,
-						canonicalRequest,
-						stringToSign,
-						authorizationHeader,
-						signedRequest
-					] = results.map(r => r.value());
-
-					canonicalRequest = canonicalRequest.replace(/\r/g, '');
-					stringToSign = stringToSign.replace(/\r/g, '');
-
-					done();
-				});
+				done();
 			});
 
 			describe('Task 1: Create a Canonical Request for Signature Version 4', () => {
@@ -227,7 +215,7 @@ fs.readdirAsync(suiteDir).then(files => {
 						secretAccessKey,
 						requestDate.slice(0, 8),
 						'us-east-1',
-						'host',
+						'service',
 						stringToSign
 					);
 
@@ -254,4 +242,4 @@ fs.readdirAsync(suiteDir).then(files => {
 			});
 		});
 	});
-});
+}

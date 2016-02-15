@@ -4,7 +4,7 @@ import {createHmac, createHash} from 'crypto';
 import {normalize} from 'path';
 import {stringify} from 'querystring';
 
-const CRLF = '\r\n';
+const CRLF = '\n';
 
 /**
  * Computes the HMAC
@@ -59,7 +59,7 @@ export function canonicalRequest(httpRequestMethod, canonicalURI, canonicalQuery
 		canonicalHeaders,
 		'',
 		signedHeaders,
-		hash(requestPayload)
+		hash(requestPayload || '')
 	].join('\n');
 }
 
@@ -160,7 +160,7 @@ export function querystringify(action, algorithm, accessKeyId, credentialScope, 
  * @returns {{head: string, body: string}}
  */
 export function parseRequest(request) {
-	let [head, body] = request.split(CRLF + CRLF);
+	let [head, body] = request.split(CRLF.repeat(2));
 
 	return {head, body};
 }
@@ -175,7 +175,7 @@ function unparseRequest(head, body) {
 	return [
 		head,
 		body
-	].join(CRLF.repeat(2));
+	].join(CRLF.repeat(2)).trim();
 }
 
 /**
@@ -199,9 +199,9 @@ export function parseHead(head) {
  */
 function parseRequestLine(requestLine) {
 	let method = requestLine
-		.match(/^[A-Z]+\s/ig)[0];
+		.match(/^\s*[A-Z]+\s/ig)[0];
 	let httpVersion = requestLine
-		.match(/\shttp\/\d+\.\d+$/ig)[0];
+		.match(/\s+http\/\d+\.\d+$/ig)[0];
 	let requestURI = requestLine
 		.slice(method.length, -httpVersion.length);
 
@@ -215,7 +215,7 @@ function parseRequestLine(requestLine) {
 /**
  *
  * @param rawUrl
- * @returns {{canonicalURI: (XMLList|XML), canonicalQueryString: string}}
+ * @returns {{canonicalURI: string, canonicalQueryString: string}}
  */
 function parseUrl(rawUrl) {
 	let [uri, query] = rawUrl.split(/\?(.+)/);
@@ -223,19 +223,29 @@ function parseUrl(rawUrl) {
 	let canonicalQueryString = '';
 
 	if (query) {
-		query.replace(/\s(.+)/g, '')
-			.replace(/\+/g, ' ')
-			.split('&')
-			.forEach(param => {
-				let [name, val] = param.split('=');
+		let splitQuery = query.replace(/\s(.+)/, '')
+			.split('&');
+		let correctedQuery = [];
 
-				if (name in queryParams) {
-					queryParams[name].push(val);
-				} else {
-					queryParams[name] = [val];
-				}
-			})
-		;
+		console.log(splitQuery);
+
+		if (splitQuery.length > 1) {
+			for (let i = 0; i < splitQuery.length; i++) {
+				correctedQuery.push(splitQuery[i] + (~splitQuery[i].indexOf('=') ? '' : '&' + splitQuery[++i]));
+			}
+		} else {
+			correctedQuery = splitQuery;
+		}
+
+		correctedQuery.forEach(param => {
+			let [name, val] = param.split('=');
+
+			if (name in queryParams) {
+				queryParams[name].push(val);
+			} else {
+				queryParams[name] = [val];
+			}
+		});
 
 		let queryParamsList = Object.keys(queryParams).sort();
 
@@ -265,12 +275,20 @@ function parseUrl(rawUrl) {
  */
 function parseCanonicalHeaders(rawHeaders) {
 	let headersMap = {};
+	let lastHeaderName;
 
 	rawHeaders.forEach(header => {
 		let [name, value] = header.split(/:(.+)/).slice(0, 2);
 
-		name = name.toLowerCase();
-		value = value.trim();
+		if (value) {
+			name = name.toLowerCase();
+			lastHeaderName = name;
+		} else {
+			name = lastHeaderName;
+			value = header;
+		}
+
+		value = value.replace(/\s+/g, ' ').trim();
 
 		if (name in headersMap) {
 			headersMap[name].push(value);
@@ -284,7 +302,7 @@ function parseCanonicalHeaders(rawHeaders) {
 	let canonicalHeadersString = signedHeadersList.map(key => {
 		return [
 			key,
-			headersMap[key].sort().join(',')
+			headersMap[key].join(',')
 		].join(':');
 	}).join('\n');
 
