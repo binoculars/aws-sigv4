@@ -227,8 +227,6 @@ function parseUrl(rawUrl) {
 			.split('&');
 		let correctedQuery = [];
 
-		console.log(splitQuery);
-
 		if (splitQuery.length > 1) {
 			for (let i = 0; i < splitQuery.length; i++) {
 				correctedQuery.push(splitQuery[i] + (~splitQuery[i].indexOf('=') ? '' : '&' + splitQuery[++i]));
