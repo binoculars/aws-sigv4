@@ -54,7 +54,7 @@ import {createHmac, createHash} from &apos;crypto&apos;;
 import {normalize} from &apos;path&apos;;
 import {stringify} from &apos;querystring&apos;;
 
-const CRLF = &apos;\r\n&apos;;
+const CRLF = &apos;\n&apos;;
 
 /**
  * Computes the HMAC
@@ -109,7 +109,7 @@ export function canonicalRequest(httpRequestMethod, canonicalURI, canonicalQuery
 		canonicalHeaders,
 		&apos;&apos;,
 		signedHeaders,
-		hash(requestPayload)
+		hash(requestPayload || &apos;&apos;)
 	].join(&apos;\n&apos;);
 }
 
@@ -210,7 +210,7 @@ export function querystringify(action, algorithm, accessKeyId, credentialScope, 
  * @returns {{head: string, body: string}}
  */
 export function parseRequest(request) {
-	let [head, body] = request.split(CRLF + CRLF);
+	let [head, body] = request.split(CRLF.repeat(2));
 
 	return {head, body};
 }
@@ -225,7 +225,7 @@ function unparseRequest(head, body) {
 	return [
 		head,
 		body
-	].join(CRLF.repeat(2));
+	].join(CRLF.repeat(2)).trim();
 }
 
 /**
@@ -249,9 +249,9 @@ export function parseHead(head) {
  */
 function parseRequestLine(requestLine) {
 	let method = requestLine
-		.match(/^[A-Z]+\s/ig)[0];
+		.match(/^\s*[A-Z]+\s/ig)[0];
 	let httpVersion = requestLine
-		.match(/\shttp\/\d+\.\d+$/ig)[0];
+		.match(/\s+http\/\d+\.\d+$/ig)[0];
 	let requestURI = requestLine
 		.slice(method.length, -httpVersion.length);
 
@@ -265,7 +265,7 @@ function parseRequestLine(requestLine) {
 /**
  *
  * @param rawUrl
- * @returns {{canonicalURI: (XMLList|XML), canonicalQueryString: string}}
+ * @returns {{canonicalURI: string, canonicalQueryString: string}}
  */
 function parseUrl(rawUrl) {
 	let [uri, query] = rawUrl.split(/\?(.+)/);
@@ -273,19 +273,27 @@ function parseUrl(rawUrl) {
 	let canonicalQueryString = &apos;&apos;;
 
 	if (query) {
-		query.replace(/\s(.+)/g, &apos;&apos;)
-			.replace(/\+/g, &apos; &apos;)
-			.split(&apos;&amp;&apos;)
-			.forEach(param =&gt; {
-				let [name, val] = param.split(&apos;=&apos;);
+		let splitQuery = query.replace(/\s(.+)/, &apos;&apos;)
+			.split(&apos;&amp;&apos;);
+		let correctedQuery = [];
 
-				if (name in queryParams) {
-					queryParams[name].push(val);
-				} else {
-					queryParams[name] = [val];
-				}
-			})
-		;
+		if (splitQuery.length &gt; 1) {
+			for (let i = 0; i &lt; splitQuery.length; i++) {
+				correctedQuery.push(splitQuery[i] + (~splitQuery[i].indexOf(&apos;=&apos;) ? &apos;&apos; : &apos;&amp;&apos; + splitQuery[++i]));
+			}
+		} else {
+			correctedQuery = splitQuery;
+		}
+
+		correctedQuery.forEach(param =&gt; {
+			let [name, val] = param.split(&apos;=&apos;);
+
+			if (name in queryParams) {
+				queryParams[name].push(val);
+			} else {
+				queryParams[name] = [val];
+			}
+		});
 
 		let queryParamsList = Object.keys(queryParams).sort();
 
@@ -315,12 +323,20 @@ function parseUrl(rawUrl) {
  */
 function parseCanonicalHeaders(rawHeaders) {
 	let headersMap = {};
+	let lastHeaderName;
 
 	rawHeaders.forEach(header =&gt; {
 		let [name, value] = header.split(/:(.+)/).slice(0, 2);
 
-		name = name.toLowerCase();
-		value = value.trim();
+		if (value) {
+			name = name.toLowerCase();
+			lastHeaderName = name;
+		} else {
+			name = lastHeaderName;
+			value = header;
+		}
+
+		value = value.replace(/\s+/g, &apos; &apos;).trim();
 
 		if (name in headersMap) {
 			headersMap[name].push(value);
@@ -334,7 +350,7 @@ function parseCanonicalHeaders(rawHeaders) {
 	let canonicalHeadersString = signedHeadersList.map(key =&gt; {
 		return [
 			key,
-			headersMap[key].sort().join(&apos;,&apos;)
+			headersMap[key].join(&apos;,&apos;)
 		].join(&apos;:&apos;);
 	}).join(&apos;\n&apos;);
 
