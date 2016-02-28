@@ -5,7 +5,6 @@
 import lint from 'mocha-eslint';
 import * as assert from 'assert';
 import {join} from 'path';
-import 'babel-polyfill';
 import * as sigv4 from '../src/index.es6';
 import * as fs from 'fs';
 
@@ -157,9 +156,7 @@ describe('Signing AWS Requests', () => {
 	let requestDate = sigv4.formatDateTime(new Date('Sun, 30 Aug 2015 12:36:00 GMT'));
 	let credentialScope = '20150830/us-east-1/service/aws4_request';
 	let secretAccessKey = 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
-	let groups = fs.readdirSync(suiteDir)
-		// TODO: There is an error with the AWS Test suite for this test. Remove this after it is fixed.
-		.filter(item => item !== 'get-vanilla-ut8-query');
+	let groups = fs.readdirSync(suiteDir);
 
 	groups.forEach(group => {
 		describe('Test Suite: ' + group, () => {

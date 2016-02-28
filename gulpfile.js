@@ -8,7 +8,7 @@ gulp.task('checkSuite', function(cb) {
 		if (err) {
 			return cb(null, download('https://docs.aws.amazon.com/general/latest/gr/samples/aws4_testsuite.zip')
 				.pipe(unzip())
-				.pipe(gulp.dest('./test/fixtures/'))
+				.pipe(gulp.dest('./test/fixtures/aws4_testsuite'))
 			);
 		} else {
 			cb(err);
