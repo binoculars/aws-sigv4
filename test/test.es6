@@ -144,44 +144,71 @@ describe('Signing AWS Requests', () => {
 	});
 });
 
+const suiteFileExtensions = [
+	'req',   // <file-name>.req—the web request to be signed.
+	'creq',  // <file-name>.creq—the resulting canonical request.
+	'sts',   // <file-name>.sts—the resulting string to sign.
+	'authz', // <file-name>.authz—the Authorization header.
+	'sreq'   // <file-name>.sreq— the signed request.
+];
+
+function getTestFiles(array, name, directory) {
+	let testFiles = {};
+
+	fs.readdirSync(directory).forEach(file => {
+		let fullPath = join(directory, file);
+
+		if (fs.lstatSync(fullPath).isDirectory()) {
+			getTestFiles(array, file, fullPath);
+		} else {
+			let ext = file.split('.')[1];
+
+			if (ext && ~suiteFileExtensions.indexOf(ext)) {
+				testFiles[ext] = fullPath;
+			}
+		}
+	});
+
+	if (Object.keys(testFiles).length === suiteFileExtensions.length) {
+		testFiles.name = name;
+		array.push(testFiles);
+	}
+}
 
 /**
  * AWS Signature Version 4 Test Suite
  * Implements https://docs.aws.amazon.com/general/latest/gr/signature-v4-test-suite.html
  */
 {
-	let suiteDir = join(__dirname, 'fixtures/aws4_testsuite/');
 	let algorithm = 'AWS4-HMAC-SHA256';
 	let accessKeyId = 'AKIDEXAMPLE';
 	let requestDate = sigv4.formatDateTime(new Date('Sun, 30 Aug 2015 12:36:00 GMT'));
 	let credentialScope = '20150830/us-east-1/service/aws4_request';
 	let secretAccessKey = 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
-	let groups = fs.readdirSync(suiteDir);
+	let securityToken = 'AQoDYXdzEPT//////////wEXAMPLEtc764bNrC9SAPBSM22wDOk4x4HIZ8j4FZTwdQWLWsKWHGBuFqwAeMicRXmx' +
+		'fpSPfIeoIYRqTflfKD8YUuwthAx7mSEI/qkPpKPi/kMcGdQrmGdeehM4IC1NtBmUpp2wUE8phUZampKsburEDy0KPkyQDYwT7WZ0wq5V' +
+		'SXDvp75YU9HFvlRd8Tx6q6fE8YQcHNVXAkiY9q6d+xo0rKwT38xVqr7ZD0u0iPPkUL64lIZbqBAz+scqKmlzm8FDrypNC9Yjc8fPOLn9' +
+		'FX9KSYvKTr4rvx3iSIlTJabIQwj2ICCR/oLxBA==';
+	let groups = [];
+
+	getTestFiles(groups, '', join(__dirname, 'fixtures/aws4_testsuite/'));
 
 	groups.forEach(group => {
-		describe('Test Suite: ' + group, () => {
+		describe('Test Suite: ' + group.name, () => {
 			let request,
 				canonicalRequest,
 				stringToSign,
 				authorizationHeader,
 				signedRequest;
 
-			before(done => {
+			before(() => {
 				[
 					request,
 					canonicalRequest,
 					stringToSign,
 					authorizationHeader,
 					signedRequest
-				] = [
-					'req',   // <file-name>.req—the web request to be signed.
-					'creq',  // <file-name>.creq—the resulting canonical request.
-					'sts',   // <file-name>.sts—the resulting string to sign.
-					'authz', // <file-name>.authz—the Authorization header.
-					'sreq'   // <file-name>.sreq— the signed request.
-				].map(ext => fs.readFileSync(join(suiteDir, group, group + '.' + ext), 'utf8'));
-
-				done();
+				] = suiteFileExtensions.map(ext => fs.readFileSync(group[ext], 'utf8'));
 			});
 
 			describe('Task 1: Create a Canonical Request for Signature Version 4', () => {
@@ -233,10 +260,18 @@ describe('Signing AWS Requests', () => {
 
 			describe('The Signed Request', () => {
 				it('should match the signed request value', () => {
-					assert.strictEqual(
-						sigv4.addAuthorization(request, authorizationHeader),
-						signedRequest
-					);
+					if (group.name === 'post-sts-header-after') {
+						// Special case
+						assert.strictEqual(
+							sigv4.addAuthorization(request, authorizationHeader, securityToken),
+							signedRequest
+						);
+					} else {
+						assert.strictEqual(
+							sigv4.addAuthorization(request, authorizationHeader),
+							signedRequest
+						);
+					}
 				});
 			});
 		});

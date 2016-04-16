@@ -8,6 +8,7 @@ const CRLF = '\n';
 
 /**
  * Computes the HMAC
+ *
  * @param {!string} key - The key
  * @param {!string} data - The data to hash
  * @param {?string} [encoding=binary] - The encoding type (hex|binary)
@@ -21,6 +22,7 @@ function hmac(key, data, encoding='binary') {
 
 /**
  * Computes the hash
+ *
  * @param {!string} data - The data to hash
  * @returns {string} - The hashed output
  */
@@ -32,6 +34,7 @@ export function hash(data) {
 
 /**
  * Formats a Date object to an AWS date string
+ *
  * @param {!Date} date - The date
  * @returns {string} - The formatted date string
  */
@@ -42,6 +45,7 @@ export function formatDateTime(date) {
 /**
  * Creates the canonical request
  * https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
+ *
  * @param {!string} httpRequestMethod - The HTTP request method (e.g. `GET` or `POST`)
  * @param {!string} canonicalURI - The canonical URI
  * @param {!string} canonicalQueryString - The canonical query string
@@ -66,6 +70,7 @@ export function canonicalRequest(httpRequestMethod, canonicalURI, canonicalQuery
 /**
  * Creates the string to sign
  * https://docs.aws.amazon.com/general/latest/gr/sigv4-create-string-to-sign.html
+ *
  * @param {!string} algorithm - The algorithm (`AWS4-HMAC-SHA256`)
  * @param {!string} requestDate - The request date (`YYYMMDDThhmmssZ`)
  * @param {!string} credentialScope - the credential scope (formatted as `YYYYMMDD/region/service/aws4_request`)
@@ -84,6 +89,7 @@ export function stringToSign(algorithm, requestDate, credentialScope, hashedCano
 /**
  * Calculates the signature
  * https://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html
+ *
  * @param {!string} secretAccessKey - The secret access key for the AWS account
  * @param {!string} date - The date in YYYYMMDD format
  * @param {!string} region - The AWS region (e.g. `us-east-1`)
@@ -107,11 +113,12 @@ export function sign(secretAccessKey, date, region, service, stringToSign) {
 /**
  * Creates the authorization string
  * https://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html
- * @param algorithm
- * @param accessKeyId
- * @param credentialScope
- * @param signedHeaders
- * @param signature
+ *
+ * @param {!string} algorithm
+ * @param {!string} accessKeyId
+ * @param {!string} credentialScope
+ * @param {!string} signedHeaders
+ * @param {!string} signature
  * @returns {string}
  */
 export function authorization(algorithm, accessKeyId, credentialScope, signedHeaders, signature) {
@@ -131,15 +138,16 @@ export function authorization(algorithm, accessKeyId, credentialScope, signedHea
 }
 
 /**
+ * Creates a query string
  *
- * @param action
- * @param algorithm
- * @param accessKeyId
- * @param credentialScope
- * @param date
- * @param timeoutInterval
- * @param signedHeaders
- * @param signature
+ * @param {!string} action
+ * @param {!string} algorithm
+ * @param {!string} accessKeyId
+ * @param {!string} credentialScope
+ * @param {!string} date
+ * @param {!string} timeoutInterval
+ * @param {!string} signedHeaders
+ * @param {!string} signature
  * @returns {string}
  */
 export function querystringify(action, algorithm, accessKeyId, credentialScope, date, timeoutInterval, signedHeaders,
@@ -155,8 +163,9 @@ export function querystringify(action, algorithm, accessKeyId, credentialScope, 
 }
 
 /**
+ * Parses an HTTP request into a header and body
  *
- * @param request
+ * @param {!string} request
  * @returns {{head: string, body: string}}
  */
 export function parseRequest(request) {
@@ -166,9 +175,10 @@ export function parseRequest(request) {
 }
 
 /**
+ * Unparses an HTTP header and an HTTP body into an HTTP request
  *
- * @param head
- * @param body
+ * @param {!string} head
+ * @param {string} body
  * @returns {string}
  */
 function unparseRequest(head, body) {
@@ -179,8 +189,9 @@ function unparseRequest(head, body) {
 }
 
 /**
+ * Parses an HTTP header into its component parts
  *
- * @param head
+ * @param {!string} head
  * @returns {{method: string, requestURI: string, httpVersion: string, headers: Array.<string>}}
  */
 export function parseHead(head) {
@@ -193,8 +204,9 @@ export function parseHead(head) {
 }
 
 /**
+ * Parses an HTTP request line into its component parts
  *
- * @param requestLine
+ * @param {!string} requestLine
  * @returns {{method: string, requestURI: string, httpVersion: string}}
  */
 function parseRequestLine(requestLine) {
@@ -213,8 +225,9 @@ function parseRequestLine(requestLine) {
 }
 
 /**
+ * Parses a URL into its canonical parts
  *
- * @param rawUrl
+ * @param {!string} rawUrl
  * @returns {{canonicalURI: string, canonicalQueryString: string}}
  */
 function parseUrl(rawUrl) {
@@ -267,8 +280,9 @@ function parseUrl(rawUrl) {
 }
 
 /**
+ * Parses raw headers into canonical headers and signed headers
  *
- * @param rawHeaders
+ * @param {string} rawHeaders
  * @returns {{canonicalHeadersString: string, signedHeadersString: string}}
  */
 function parseCanonicalHeaders(rawHeaders) {
@@ -310,23 +324,30 @@ function parseCanonicalHeaders(rawHeaders) {
 }
 
 /**
+ * Adds the authorization headers, and optionally, the STS security token to the request
  *
- * @param request
- * @param authorization
+ * @param {!string} request
+ * @param {!string} authorization
+ * @param {!string} [securityToken]
  * @returns {string}
  */
-export function addAuthorization(request, authorization) {
+export function addAuthorization(request, authorization, securityToken) {
 	let parsedRequest = parseRequest(request);
 
 	return unparseRequest(
-		parsedRequest.head + CRLF + 'Authorization: ' + authorization,
+		[
+			parsedRequest.head,
+			securityToken ? CRLF + 'X-Amz-Security-Token:' + securityToken : '',
+			CRLF + 'Authorization: ' + authorization
+		].join(''),
 		parsedRequest.body
 	);
 }
 
 /**
+ * Creates a canonical request from a standard request
  *
- * @param request
+ * @param {!string} request
  * @returns {string}
  */
 export function requestToCanonicalRequest(request) {
