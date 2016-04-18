@@ -57,7 +57,6 @@ rules:
   no-case-declarations: 2
   no-div-regex: 2
   no-else-return: 0
-  no-empty-label: 2
   no-empty-pattern: 2
   no-eq-null: 2
   no-eval: 2
@@ -83,7 +82,7 @@ rules:
   no-octal: 2
   no-proto: 2
   no-redeclare: 2
-  no-return-assign: 2
+  no-return-assign: 0
   no-script-url: 2
   no-self-compare: 2
   no-sequences: 0
@@ -211,3 +210,6 @@ rules:
   prefer-spread: 0
   prefer-template: 0
   require-yield: 0
+
+parserOptions:
+  sourceType: "module"

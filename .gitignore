@@ -31,3 +31,4 @@ node_modules
 .idea/
 test/fixtures/*
 gh-pages/
+.nyc_output
