@@ -18,9 +18,9 @@ lint(['**/*.es6']);
  * Implements https://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html
  */
 describe('Signing AWS Requests', () => {
-	let signedHeaders = 'content-type;host;x-amz-date';
-	let requestPayload = 'Action=ListUsers&Version=2010-05-08';
-	let hashedCanonicalRequest = '3511de7e95d28ecd39e9513b642aee07e54f4941150d8df8bf94b328ef7e55e2';
+	const signedHeaders = 'content-type;host;x-amz-date';
+	const requestPayload = 'Action=ListUsers&Version=2010-05-08';
+	const hashedCanonicalRequest = '3511de7e95d28ecd39e9513b642aee07e54f4941150d8df8bf94b328ef7e55e2';
 
 	/**
 	 * Implements https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
@@ -33,7 +33,7 @@ describe('Signing AWS Requests', () => {
 			);
 		});
 
-		let canonicalForm = 'POST\n/\n\ncontent-type:application/x-www-form-urlencoded; charset=utf-8\nhost:iam.a' +
+		const canonicalForm = 'POST\n/\n\ncontent-type:application/x-www-form-urlencoded; charset=utf-8\nhost:iam.a' +
 			'mazonaws.com\nx-amz-date:20110909T233600Z\n\ncontent-type;host;x-amz-date\nb6359072c78d70ebee1e81adc' +
 			'bab4f01bf2c23245fa365ef83fe8f1f955085e2';
 
@@ -60,9 +60,9 @@ describe('Signing AWS Requests', () => {
 		});
 	});
 
-	let algorithm = 'AWS4-HMAC-SHA256';
-	let credentialScope = '20110909/us-east-1/iam/aws4_request';
-	let stringToSign = 'AWS4-HMAC-SHA256\n20110909T233600Z\n20110909/us-east-1/iam/aws4_request\n3511de7e95d28ecd' +
+	const algorithm = 'AWS4-HMAC-SHA256';
+	const credentialScope = '20110909/us-east-1/iam/aws4_request';
+	const stringToSign = 'AWS4-HMAC-SHA256\n20110909T233600Z\n20110909/us-east-1/iam/aws4_request\n3511de7e95d28ecd' +
 		'39e9513b642aee07e54f4941150d8df8bf94b328ef7e55e2';
 
 	/**
@@ -82,7 +82,7 @@ describe('Signing AWS Requests', () => {
 		});
 	});
 
-	let signature = 'ced6826de92d2bdeed8f846f0bf508e8559e98e4b0199114b84c54174deb456c';
+	const signature = 'ced6826de92d2bdeed8f846f0bf508e8559e98e4b0199114b84c54174deb456c';
 
 	/**
 	 * Implements https://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html
@@ -106,7 +106,7 @@ describe('Signing AWS Requests', () => {
 	 * Implements https://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html
 	 */
 	describe('Task 4: Add the Signing Information to the Request', () => {
-		let accessKeyId = 'AKIDEXAMPLE';
+		const accessKeyId = 'AKIDEXAMPLE';
 
 		it('should match the authorization', () => {
 			assert.strictEqual(
@@ -153,15 +153,15 @@ const suiteFileExtensions = [
 ];
 
 function getTestFiles(array, name, directory) {
-	let testFiles = {};
+	const testFiles = {};
 
 	fs.readdirSync(directory).forEach(file => {
-		let fullPath = join(directory, file);
+		const fullPath = join(directory, file);
 
 		if (fs.lstatSync(fullPath).isDirectory()) {
 			getTestFiles(array, file, fullPath);
 		} else {
-			let ext = file.split('.')[1];
+			const ext = file.split('.')[1];
 
 			if (ext && ~suiteFileExtensions.indexOf(ext)) {
 				testFiles[ext] = fullPath;
@@ -180,16 +180,16 @@ function getTestFiles(array, name, directory) {
  * Implements https://docs.aws.amazon.com/general/latest/gr/signature-v4-test-suite.html
  */
 {
-	let algorithm = 'AWS4-HMAC-SHA256';
-	let accessKeyId = 'AKIDEXAMPLE';
-	let requestDate = sigv4.formatDateTime(new Date('Sun, 30 Aug 2015 12:36:00 GMT'));
-	let credentialScope = '20150830/us-east-1/service/aws4_request';
-	let secretAccessKey = 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
-	let securityToken = 'AQoDYXdzEPT//////////wEXAMPLEtc764bNrC9SAPBSM22wDOk4x4HIZ8j4FZTwdQWLWsKWHGBuFqwAeMicRXmx' +
+	const algorithm = 'AWS4-HMAC-SHA256';
+	const accessKeyId = 'AKIDEXAMPLE';
+	const requestDate = sigv4.formatDateTime(new Date('Sun, 30 Aug 2015 12:36:00 GMT'));
+	const credentialScope = '20150830/us-east-1/service/aws4_request';
+	const secretAccessKey = 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
+	const securityToken = 'AQoDYXdzEPT//////////wEXAMPLEtc764bNrC9SAPBSM22wDOk4x4HIZ8j4FZTwdQWLWsKWHGBuFqwAeMicRXmx' +
 		'fpSPfIeoIYRqTflfKD8YUuwthAx7mSEI/qkPpKPi/kMcGdQrmGdeehM4IC1NtBmUpp2wUE8phUZampKsburEDy0KPkyQDYwT7WZ0wq5V' +
 		'SXDvp75YU9HFvlRd8Tx6q6fE8YQcHNVXAkiY9q6d+xo0rKwT38xVqr7ZD0u0iPPkUL64lIZbqBAz+scqKmlzm8FDrypNC9Yjc8fPOLn9' +
 		'FX9KSYvKTr4rvx3iSIlTJabIQwj2ICCR/oLxBA==';
-	let groups = [];
+	const groups = [];
 
 	getTestFiles(groups, '', join(__dirname, 'fixtures/aws4_testsuite/'));
 
@@ -236,8 +236,8 @@ function getTestFiles(array, name, directory) {
 
 			describe('Task 3: Calculate the AWS Signature Version 4', () => {
 				it('should match the authorization header value', () => {
-					let signedHeaders = canonicalRequest.split('\n').slice(-2, -1)[0];
-					let signature = sigv4.sign(
+					const signedHeaders = canonicalRequest.split('\n').slice(-2, -1)[0];
+					const signature = sigv4.sign(
 						secretAccessKey,
 						requestDate.slice(0, 8),
 						'us-east-1',

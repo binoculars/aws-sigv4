@@ -15,7 +15,7 @@
 
 ## Example
 ```JavaScript
-var sigv4 = require('aws-sigv4');
+const sigv4 = require('aws-sigv4');
 
 sigv4.sign(
 	secretAccessKey,
@@ -24,4 +24,37 @@ sigv4.sign(
 	'host',
 	stringToSign
 );
+
+// Or, more specifically for S3:
+
+const date = sigv4
+	.formatDateTime(new Date())
+	.slice(0, 8);
+const credential = `${process.env.AWS_ACCESS_KEY_ID}/${date}/${process.env.AWS_REGION}/s3/aws4_request`
+const policy = new Buffer(
+	JSON.stringify({
+	    expiration: new Date(Date.now() + 15 * 60000).toISOString(), // 15 minutes from now
+	    conditions: [
+	        {bucket: 'my-bucket-name'},
+	        {key: 'my-s3-key.mov'},
+	        {acl: 'private'},
+	        ['starts-with', '$Content-Type', 'video/'],
+	        ['content-length-range', 0, 10 * 1024 * 1024],
+	        {'x-amz-credential': credential},
+	        {'x-amz-algorithm': 'AWS4-HMAC-SHA256'},
+	        {'x-amz-date': date + 'T000000Z'}
+	    ]
+	})
+)
+	.toString('base64');
+
+sigv4.sign(
+	process.env.AWS_SECRET_ACCESS_KEY,
+	date,
+	process.env.AWS_REGION,
+	's3',
+	policy
+);
 ```
+
+See [Authenticating Requests in Browser-Based Uploads Using POST (AWS Signature Version 4)](https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-UsingHTTPPOST.html) as the primary use case.

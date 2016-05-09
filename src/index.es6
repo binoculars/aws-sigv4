@@ -55,7 +55,7 @@ export function formatDateTime(date) {
  * @returns {string} - The canonical request
  */
 export function canonicalRequest(httpRequestMethod, canonicalURI, canonicalQueryString, canonicalHeaders, signedHeaders,
-                                 requestPayload) {
+                                 requestPayload='') {
 	return [
 		httpRequestMethod,
 		canonicalURI,
@@ -63,7 +63,7 @@ export function canonicalRequest(httpRequestMethod, canonicalURI, canonicalQuery
 		canonicalHeaders,
 		'',
 		signedHeaders,
-		hash(requestPayload || '')
+		hash(requestPayload)
 	].join('\n');
 }
 
@@ -122,7 +122,7 @@ export function sign(secretAccessKey, date, region, service, stringToSign) {
  * @returns {string}
  */
 export function authorization(algorithm, accessKeyId, credentialScope, signedHeaders, signature) {
-	let auth = {
+	const auth = {
 		'Credential': accessKeyId + '/' + credentialScope,
 		'SignedHeaders': signedHeaders,
 		'Signature': signature
@@ -132,7 +132,7 @@ export function authorization(algorithm, accessKeyId, credentialScope, signedHea
 		algorithm,
 		Object
 			.keys(auth)
-			.map(key => [key, auth[key]].join('='))
+			.map(key => `${key}=${auth[key]}`)
 			.join(', ')
 	].join(' ');
 }
@@ -154,7 +154,7 @@ export function querystringify(action, algorithm, accessKeyId, credentialScope, 
                                signature) {
 	return action + stringify({
 		'X-Amz-Algorithm': algorithm,
-		'X-Amz-Credential': accessKeyId + '/' + credentialScope,
+		'X-Amz-Credential': `${accessKeyId}/${credentialScope}`,
 		'X-Amz-Date': date,
 		'X-Amz-Expires': timeoutInterval,
 		'X-Amz-SignedHeaders': signedHeaders,
@@ -169,7 +169,7 @@ export function querystringify(action, algorithm, accessKeyId, credentialScope, 
  * @returns {{head: string, body: string}}
  */
 export function parseRequest(request) {
-	let [head, body] = request.split(CRLF.repeat(2));
+	const [head, body] = request.split(CRLF.repeat(2));
 
 	return {head, body};
 }
@@ -181,11 +181,9 @@ export function parseRequest(request) {
  * @param {string} body
  * @returns {string}
  */
-function unparseRequest(head, body) {
-	return [
-		head,
-		body
-	].join(CRLF.repeat(2)).trim();
+function unparseRequest(head, body='') {
+	return `${head}${CRLF.repeat(2)}${body}`
+		.trim();
 }
 
 /**
@@ -195,10 +193,10 @@ function unparseRequest(head, body) {
  * @returns {{method: string, requestURI: string, httpVersion: string, headers: Array.<string>}}
  */
 export function parseHead(head) {
-	let lines = head.split(CRLF);
-	let requestLine = lines[0];
-	let headers = lines.slice(1);
-	let {method, requestURI, httpVersion} = parseRequestLine(requestLine);
+	const lines = head.split(CRLF);
+	const requestLine = lines[0];
+	const headers = lines.slice(1);
+	const {method, requestURI, httpVersion} = parseRequestLine(requestLine);
 
 	return {method, requestURI, httpVersion, headers};
 }
@@ -210,11 +208,11 @@ export function parseHead(head) {
  * @returns {{method: string, requestURI: string, httpVersion: string}}
  */
 function parseRequestLine(requestLine) {
-	let method = requestLine
+	const method = requestLine
 		.match(/^\s*[A-Z]+\s/ig)[0];
-	let httpVersion = requestLine
+	const httpVersion = requestLine
 		.match(/\s+http\/\d+\.\d+$/ig)[0];
-	let requestURI = requestLine
+	const requestURI = requestLine
 		.slice(method.length, -httpVersion.length);
 
 	return {
@@ -231,12 +229,13 @@ function parseRequestLine(requestLine) {
  * @returns {{canonicalURI: string, canonicalQueryString: string}}
  */
 function parseUrl(rawUrl) {
-	let [uri, query] = rawUrl.split(/\?(.+)/);
-	let queryParams = {};
+	const [uri, query] = rawUrl.split(/\?(.+)/);
+	const queryParams = {};
 	let canonicalQueryString = '';
 
 	if (query) {
-		let splitQuery = query.replace(/\s(.+)/, '')
+		const splitQuery = query
+			.replace(/\s(.+)/, '')
 			.split('&');
 		let correctedQuery = [];
 
@@ -249,7 +248,7 @@ function parseUrl(rawUrl) {
 		}
 
 		correctedQuery.forEach(param => {
-			let [name, val] = param.split('=');
+			const [name, val] = param.split('=');
 
 			if (name in queryParams) {
 				queryParams[name].push(val);
@@ -258,19 +257,17 @@ function parseUrl(rawUrl) {
 			}
 		});
 
-		let queryParamsList = Object.keys(queryParams).sort();
+		let queryParamsList = Object
+			.keys(queryParams)
+			.sort();
 
-		canonicalQueryString = queryParamsList.map(key => {
-			return queryParams[key]
+		canonicalQueryString = queryParamsList
+			.map(key => queryParams[key]
 				.sort()
-				.map(val => {
-					return [
-						encodeURIComponent(key),
-						encodeURIComponent(val || '')
-					].join('=');
-				})
-				.join('&');
-		}).join('&');
+				.map(val => `${encodeURIComponent(key)}=${encodeURIComponent(val || '')}`)
+				.join('&')
+			)
+			.join('&');
 	}
 
 	return {
@@ -282,15 +279,17 @@ function parseUrl(rawUrl) {
 /**
  * Parses raw headers into canonical headers and signed headers
  *
- * @param {string} rawHeaders
+ * @param {Array<string>} rawHeaders
  * @returns {{canonicalHeadersString: string, signedHeadersString: string}}
  */
 function parseCanonicalHeaders(rawHeaders) {
-	let headersMap = {};
+	const headersMap = {};
 	let lastHeaderName;
 
 	rawHeaders.forEach(header => {
-		let [name, value] = header.split(/:(.+)/).slice(0, 2);
+		let [name, value] = header
+			.split(/:(.+)/)
+			.slice(0, 2);
 
 		if (value) {
 			name = name.toLowerCase();
@@ -300,7 +299,9 @@ function parseCanonicalHeaders(rawHeaders) {
 			value = header;
 		}
 
-		value = value.replace(/\s+/g, ' ').trim();
+		value = value
+			.replace(/\s+/g, ' ')
+			.trim();
 
 		if (name in headersMap) {
 			headersMap[name].push(value);
@@ -309,16 +310,15 @@ function parseCanonicalHeaders(rawHeaders) {
 		}
 	});
 
-	let signedHeadersList = Object.keys(headersMap).sort();
+	const signedHeadersList = Object
+		.keys(headersMap)
+		.sort();
 
-	let canonicalHeadersString = signedHeadersList.map(key => {
-		return [
-			key,
-			headersMap[key].join(',')
-		].join(':');
-	}).join('\n');
+	const canonicalHeadersString = signedHeadersList
+		.map(key => `${key}:${headersMap[key].join(',')}`)
+		.join('\n');
 
-	let signedHeadersString = signedHeadersList.join(';');
+	const signedHeadersString = signedHeadersList.join(';');
 
 	return {canonicalHeadersString, signedHeadersString};
 }
@@ -332,14 +332,12 @@ function parseCanonicalHeaders(rawHeaders) {
  * @returns {string}
  */
 export function addAuthorization(request, authorization, securityToken) {
-	let parsedRequest = parseRequest(request);
+	const parsedRequest = parseRequest(request);
+	const tokenLine = securityToken ? `${CRLF}X-Amz-Security-Token:${securityToken}` : '';
+	const authorizationLine =`${CRLF}Authorization: ${authorization}`;
 
 	return unparseRequest(
-		[
-			parsedRequest.head,
-			securityToken ? CRLF + 'X-Amz-Security-Token:' + securityToken : '',
-			CRLF + 'Authorization: ' + authorization
-		].join(''),
+		`${parsedRequest.head}${tokenLine}${authorizationLine}`,
 		parsedRequest.body
 	);
 }
@@ -351,10 +349,10 @@ export function addAuthorization(request, authorization, securityToken) {
  * @returns {string}
  */
 export function requestToCanonicalRequest(request) {
-	let parsedRequest = parseRequest(request);
-	let parsedHead = parseHead(parsedRequest.head);
-	let parsedUrl = parseUrl(parsedHead.requestURI);
-	let parsedHeaders = parseCanonicalHeaders(parsedHead.headers);
+	const parsedRequest = parseRequest(request);
+	const parsedHead = parseHead(parsedRequest.head);
+	const parsedUrl = parseUrl(parsedHead.requestURI);
+	const parsedHeaders = parseCanonicalHeaders(parsedHead.headers);
 
 	return canonicalRequest(
 		parsedHead.method,
