@@ -1,6 +1,6 @@
 {
   "name": "aws-sigv4",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "AWS Signature Version 4",
   "main": "lib/index.js",
   "directories": {
