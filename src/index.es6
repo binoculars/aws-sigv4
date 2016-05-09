@@ -217,7 +217,7 @@ function parseRequestLine(requestLine) {
 
 	return {
 		method: method.trim(),
-		requestURI: requestURI,
+		requestURI,
 		httpVersion: httpVersion.trim()
 	};
 }
@@ -270,8 +270,11 @@ function parseUrl(rawUrl) {
 			.join('&');
 	}
 
+	const canonicalURI = encodeURIComponent(normalize(uri))
+		.replace(/%2F/g, '/');
+
 	return {
-		canonicalURI: normalize(uri),
+		canonicalURI,
 		canonicalQueryString
 	};
 }
