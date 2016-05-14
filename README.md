@@ -12,6 +12,7 @@
 [![Code Climate](https://codeclimate.com/github/binoculars/aws-sigv4/badges/gpa.svg)](https://codeclimate.com/github/binoculars/aws-sigv4)
 [![Test Coverage](https://codeclimate.com/github/binoculars/aws-sigv4/badges/coverage.svg)](https://codeclimate.com/github/binoculars/aws-sigv4/coverage)
 [![Issue Count](https://codeclimate.com/github/binoculars/aws-sigv4/badges/issue_count.svg)](https://codeclimate.com/github/binoculars/aws-sigv4) 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/75a427334dad4aac843674b99bc40e8b)](https://www.codacy.com/app/barrett-harber/aws-sigv4?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=binoculars/aws-sigv4&amp;utm_campaign=Badge_Grade)
 
 ## Example
 ```JavaScript

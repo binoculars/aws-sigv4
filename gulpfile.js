@@ -11,7 +11,7 @@ gulp.task('checkSuite', function(cb) {
 				.pipe(gulp.dest('./test/fixtures'))
 			);
 		} else {
-			cb(err);
+			return cb(err);
 		}
 	});
 });
