@@ -39,7 +39,9 @@ export function hash(data) {
  * @returns {string} - The formatted date string
  */
 export function formatDateTime(date) {
-	return date.toISOString().replace(/-|:|(\.\d+)/g, '');
+	return date
+		.toISOString()
+		.replace(/-|:|(\.\d+)/g, '');
 }
 
 /**
@@ -100,12 +102,15 @@ export function stringToSign(algorithm, requestDate, credentialScope, hashedCano
 export function sign(secretAccessKey, date, region, service, stringToSign) {
 	let signingKey = 'AWS4' + secretAccessKey;
 
-	[
+	const steps = [
 		date,
 		region,
 		service,
 		'aws4_request'
-	].forEach(data => signingKey = hmac(signingKey, data));
+	];
+
+	for (let data of steps)
+		signingKey = hmac(signingKey, data);
 
 	return hmac(signingKey, stringToSign, 'hex');
 }
@@ -122,19 +127,8 @@ export function sign(secretAccessKey, date, region, service, stringToSign) {
  * @returns {string}
  */
 export function authorization(algorithm, accessKeyId, credentialScope, signedHeaders, signature) {
-	const auth = {
-		'Credential': accessKeyId + '/' + credentialScope,
-		'SignedHeaders': signedHeaders,
-		'Signature': signature
-	};
-
-	return [
-		algorithm,
-		Object
-			.keys(auth)
-			.map(key => `${key}=${auth[key]}`)
-			.join(', ')
-	].join(' ');
+	return `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, ` +
+		`Signature=${signature}`;
 }
 
 /**
@@ -289,7 +283,7 @@ function parseCanonicalHeaders(rawHeaders) {
 	const headersMap = {};
 	let lastHeaderName;
 
-	rawHeaders.forEach(header => {
+	for (let header of rawHeaders) {
 		let [name, value] = header
 			.split(/:(.+)/)
 			.slice(0, 2);
@@ -311,7 +305,7 @@ function parseCanonicalHeaders(rawHeaders) {
 		} else {
 			headersMap[name] = [value];
 		}
-	});
+	}
 
 	const signedHeadersList = Object
 		.keys(headersMap)
