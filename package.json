@@ -24,14 +24,14 @@
     "babel-polyfill": "^6.5.0",
     "babel-preset-es2015": "^6.5.0",
     "coveralls": "^2.11.4",
-    "eslint": "^2.13.1",
+    "eslint": "^3.5.0",
     "gulp": "^3.9.0",
     "gulp-download": "0.0.1",
     "gulp-unzip": "^0.1.3",
     "gulp-util": "^3.0.7",
-    "mocha": "^2.5.3",
-    "mocha-eslint": "^2.1.1",
-    "nyc": "^6.6.1"
+    "mocha": "^3.0.2",
+    "mocha-eslint": "^3.0.1",
+    "nyc": "^8.1.1"
   },
   "babel": {
     "presets": [
