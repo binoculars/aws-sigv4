@@ -1,10 +1,10 @@
 {
   "name": "aws-sigv4",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "description": "AWS Signature Version 4",
   "main": "lib/index.js",
-  "engines" : {
-    "node" : ">=0.10"
+  "engines": {
+    "node": ">=0.10"
   },
   "directories": {
     "test": "test"
