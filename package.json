@@ -3,12 +3,15 @@
   "version": "1.7.1",
   "description": "AWS Signature Version 4",
   "main": "lib/index.js",
+  "engines" : {
+    "node" : ">=0.10"
+  },
   "directories": {
     "test": "test"
   },
   "scripts": {
     "pretest": "gulp checkSuite",
-    "test": "nyc mocha test/**/*.es6 --compilers js:babel-core/register,js:babel-polyfill",
+    "test": "nyc mocha test/test.es6 --compilers js:babel-core/register,js:babel-polyfill",
     "coverage": "nyc report --reporter=text-lcov | coveralls"
   },
   "keywords": [
