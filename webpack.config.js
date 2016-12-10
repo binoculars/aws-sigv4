@@ -4,24 +4,19 @@ const path = require('path');
 function config(target) {
 	return {
 		entry: [
-			// 'babel-polyfill',
 			'./src/index.js'
 		],
 
 		output: {
-			path: path.resolve(__dirname, 'lib', target), // string
+			path: path.resolve(__dirname, 'lib', target),
 			filename: 'index.js', // string
-			library: 'sigv4', // string,
-			//libraryTarget: target === 'node' ? 'commonjs' : 'umd',
-			libraryTarget: 'umd',
+			library: target === 'node' ? undefined : 'sigv4',
+			libraryTarget: target === 'node' ? 'commonjs' : 'umd',
 		},
 
 		module: {
-			// configuration regarding modules
 
 			rules: [
-				// rules for modules (configure loaders, parser options, etc.)
-
 				{
 					test: /\.js?$/,
 					include: [
@@ -31,7 +26,7 @@ function config(target) {
 					options: {
 						presets: [
 							'es2015-node4',
-							// 'babili'
+							'babili'
 						],
 						compact: true,
 						comments: false,
@@ -50,8 +45,8 @@ function config(target) {
 			},
 		},
 
-		devtool: 'source-map', // enum
-		context: __dirname, // string (absolute path!)
+		devtool: 'source-map',
+		context: __dirname,
 		target,
 
 		stats: {

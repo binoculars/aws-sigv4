@@ -2,7 +2,7 @@
   "name": "aws-sigv4",
   "version": "1.8.0",
   "description": "AWS Signature Version 4",
-  "main": "lib/index.js",
+  "main": "lib/node/index.js",
   "engines": {
     "node": ">=4"
   },
@@ -11,7 +11,7 @@
   },
   "scripts": {
     "pretest": "gulp checkSuite",
-    "test": "nyc mocha test/test.es6 --compilers js:babel-core/register,js:babel-polyfill",
+    "test": "mocha test/index.js --compilers js:babel-core/register,js:babel-polyfill",
     "coverage": "nyc report --reporter=text-lcov | coveralls",
     "build": "babel src -d lib"
   },
@@ -29,6 +29,7 @@
     "babel-polyfill": "^6.5.0",
     "babel-preset-babili": "0.0.9",
     "babel-preset-es2015-node4": "^2.1.0",
+    "chai": "^3.5.0",
     "coveralls": "^2.11.4",
     "eslint": "^3.5.0",
     "gulp": "^3.9.0",
@@ -37,13 +38,13 @@
     "gulp-util": "^3.0.7",
     "mocha": "^3.0.2",
     "mocha-eslint": "^3.0.1",
+    "mocha-loader": "^1.0.0",
     "nyc": "^8.1.1",
     "webpack": "^2.1.0-beta.27"
   },
   "babel": {
     "presets": [
-      "es2015-node4",
-      "babili"
+      "es2015-node4"
     ]
   },
   "nyc": {

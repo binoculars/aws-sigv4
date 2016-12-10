@@ -8,12 +8,153 @@
 <body>
 <div id="mocha"></div>
 <script src="../node_modules/mocha/mocha.js"></script>
+<script src="../node_modules/chai/chai.js"></script>
 <script>mocha.setup('bdd')</script>
 
 <!-- load code you want to test here -->
-
+<script src="../lib/web/index.js"></script>
 <!-- load your test files here -->
+<script>
+	const assert = chai.assert;
+	/**
+	 * Tests from the AWS Documentation
+	 * Implements https://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html
+	 */
+	describe('Signing AWS Requests', () => {
+		const signedHeaders = 'content-type;host;x-amz-date';
+		const requestPayload = 'Action=ListUsers&Version=2010-05-08';
+		const hashedCanonicalRequest = '3511de7e95d28ecd39e9513b642aee07e54f4941150d8df8bf94b328ef7e55e2';
 
+		/**
+		 * Implements https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
+		 */
+		describe('Task 1: Create a Canonical Request', () => {
+			it('should match the hashed payload', () => sigv4.hash(requestPayload)
+				.then(result => assert
+					.strictEqual(
+						result,
+						'b6359072c78d70ebee1e81adcbab4f01bf2c23245fa365ef83fe8f1f955085e2'
+					)
+				)
+			);
+
+			const canonicalForm = 'POST\n/\n\ncontent-type:application/x-www-form-urlencoded; charset=utf-8\nhost:iam.a' +
+				'mazonaws.com\nx-amz-date:20110909T233600Z\n\ncontent-type;host;x-amz-date\nb6359072c78d70ebee1e81adc' +
+				'bab4f01bf2c23245fa365ef83fe8f1f955085e2';
+			const args = [
+				'POST',
+				'/',
+				'',
+				'content-type:application/x-www-form-urlencoded; charset=utf-8\nhost:iam.amazonaws.com\nx-amz' +
+				'-date:20110909T233600Z',
+				signedHeaders,
+				requestPayload
+			];
+
+			it('should match the sample canonical form', () => sigv4.buildCanonicalRequest(...args)
+				.then(result => assert
+					.strictEqual(
+						result,
+						canonicalForm
+					)
+				)
+			);
+
+			it('should match the sample hashed canonical request', () => sigv4.hash(canonicalForm)
+				.then(result => assert
+					.strictEqual(
+						result,
+						hashedCanonicalRequest
+					)
+				)
+			);
+		});
+
+		const credentialScope = '20110909/us-east-1/iam/aws4_request';
+		const stringToSign = 'AWS4-HMAC-SHA256\n20110909T233600Z\n20110909/us-east-1/iam/aws4_request\n3511de7e95d28ecd' +
+			'39e9513b642aee07e54f4941150d8df8bf94b328ef7e55e2';
+
+		/**
+		 * Implements https://docs.aws.amazon.com/general/latest/gr/sigv4-create-string-to-sign.html
+		 */
+		describe('Task 2: Create a String to Sign', () => {
+			it('should match the sample string to sign', () => {
+				assert.strictEqual(
+					sigv4.buildStringToSign(
+						'20110909T233600Z',
+						credentialScope,
+						hashedCanonicalRequest
+					),
+					stringToSign
+				);
+			});
+		});
+
+		const signature = 'ced6826de92d2bdeed8f846f0bf508e8559e98e4b0199114b84c54174deb456c';
+
+		/**
+		 * Implements https://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html
+		 */
+		describe('Task 3: Calculate the Signature', () => {
+			const args = [
+				'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
+				'20110909',
+				'us-east-1',
+				'iam',
+				stringToSign
+			];
+
+			it('should match the hex signature', () => sigv4.sign(...args)
+				.then(result => assert
+					.strictEqual(
+						result,
+						signature
+					)
+				)
+			);
+		});
+
+		/**
+		 * Implements https://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html
+		 */
+		describe('Task 4: Add the Signing Information to the Request', () => {
+			const accessKeyId = 'AKIDEXAMPLE';
+
+			it('should match the authorization', () => {
+				assert.strictEqual(
+					sigv4.buildAuthorization(
+						accessKeyId,
+						credentialScope,
+						signedHeaders,
+						signature
+					),
+					'AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=conte' +
+					'nt-type;host;x-amz-date, Signature=ced6826de92d2bdeed8f846f0bf508e8559e98e4b0199114b84c54174' +
+					'deb456c'
+				);
+			});
+
+//			it('should match the query string', () => {
+//				assert.strictEqual(
+//					parsing.querystringify(
+//						'Action=CreateUser&UserName=NewUser&Version=2010-05-08&',
+//						'AWS4-HMAC-SHA256',
+//						accessKeyId,
+//						'20140611/us-east-1/iam/aws4_request',
+//						'20140611T231318Z',
+//						'30',
+//						'host',
+//						signature
+//					),
+//					'Action=CreateUser&UserName=NewUser&Version=2010-05-08&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Cre' +
+//					'dential=AKIDEXAMPLE%2F20140611%2Fus-east-1%2Fiam%2Faws4_request&X-Amz-Date=20140611T231318Z&' +
+//					'X-Amz-Expires=30&X-Amz-SignedHeaders=host&X-Amz-Signature=ced6826de92d2bdeed8f846f0bf508e855' +
+//					'9e98e4b0199114b84c54174deb456c'
+//				);
+//			});
+		});
+	});
+</script>
 <script>
 	mocha.run();
 </script>

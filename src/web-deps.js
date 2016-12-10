@@ -1,49 +1,58 @@
 const crypto = window.crypto || window.msCrypto;
 const subtle = crypto.subtle || crypto.webkitSubtle;
-const algorithm = 'SHA-256';
+const algorithm = 'sha-256';
 
 export const normalize = encodeURI;
 
 function toHex(buffer) {
-	return new DataView(buffer)
-		.getInt8(1)
-		.toString(16);
+	const bytes = new Uint8Array(buffer);
+
+	let str = '';
+
+	for (let i = 0; i < bytes.length; ++i) {
+		const byte = bytes[i].toString(16);
+		str += `${byte.length < 2 ? '0' : ''}${byte}`;
+	}
+
+	return str;
 }
 
-const toString = ('TextEncoder' in window) ?
+const toBinary = ('TextEncoder' in window) ?
 	(str => (new TextEncoder()).encode(str)) :
 	(str => {
 		const len = str.length;
 		const buf = new ArrayBuffer(len * 2);
 		const bufView = new Uint16Array(buf);
+
 		for (let i = 0; i < len; i++)
 			bufView[i] = str.charCodeAt(i);
+
 		return buf;
 	});
 
+const hashOptions = {
+	name: algorithm
+};
+
 const algorithmSign = {
 	name: 'HMAC',
-	hash: {
-		name: algorithm
-	}
+	hash: hashOptions
 };
 
 /**
  * Computes the HMAC
  *
- * @param {!string} key - The key
+ * @param {!string|ArrayBuffer} key - The key
  * @param {!string} data - The data to hash
  * @param {?string} [encoding=binary] - The encoding type (hex|binary)
- * @returns {string|buffer} - The output HMAC
+ * @returns {string|ArrayBuffer} - The output HMAC
  */
 export function hmac(key, data, encoding='binary') {
 	return subtle
 		.importKey(
 			'raw',
-			key,
-			{
-				name: 'HMAC'
-			},
+			typeof key === 'string' ? toBinary(key) : key,
+			algorithmSign,
 			false,
 			['sign']
 		)
@@ -51,7 +60,7 @@ export function hmac(key, data, encoding='binary') {
 			.sign(
 				algorithmSign,
 				importedKey,
-				data
+				toBinary(data)
 			)
 		)
 		.then(buffer =>
@@ -68,10 +77,8 @@ export function hmac(key, data, encoding='binary') {
 export function hash(data) {
 	return subtle
 		.digest(
-			{
-				name: algorithm
-			},
-			data
+			hashOptions,
+			toBinary(data)
 		)
 		.then(toHex);
 }

@@ -5,7 +5,7 @@
 import lint from 'mocha-eslint';
 import * as assert from 'assert';
 import {join} from 'path';
-import * as sigv4 from '../lib/node/index.js';
+import sigv4 from 'aws-sigv4';
 import * as fs from 'fs';
 import * as parsing from './parsing.js';
 

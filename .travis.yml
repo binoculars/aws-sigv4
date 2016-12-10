@@ -2,6 +2,7 @@ language: node_js
 node_js:
   - "4.3.2"
 before_script:
+  - npm link aws-sigv4
   - npm install -g gulp
 after_success: npm run coverage
 addons:
