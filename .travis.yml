@@ -7,8 +7,7 @@ cache:
     - test/fixtures
 before_script:
   - npm link && npm link aws-sigv4
-  - npm install -g gulp
 after_success: npm run coverage
 addons:
-    code_climate:
-        repo_token: 41b073ed873540cfbac2c98ab1c7c79b3e894bebc7b462bd04f5988650270385
+  code_climate:
+    repo_token: 41b073ed873540cfbac2c98ab1c7c79b3e894bebc7b462bd04f5988650270385
