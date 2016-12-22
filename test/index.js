@@ -5,13 +5,17 @@
 import lint from 'mocha-eslint';
 import * as assert from 'assert';
 import {join} from 'path';
-import * as sigv4 from '../src/index.es6';
+import sigv4 from 'aws-sigv4';
 import * as fs from 'fs';
+import * as parsing from './parsing.js';
 
 /**
  * Mocha ESLint
  */
-lint(['**/*.es6']);
+lint([
+	'src/*.js',
+	'test/*.js'
+]);
 
 /**
  * Tests from the AWS Documentation
@@ -26,41 +30,47 @@ describe('Signing AWS Requests', () => {
 	 * Implements https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
 	 */
 	describe('Task 1: Create a Canonical Request', () => {
-		it('should match the hashed payload', () => {
-			assert.strictEqual(
-				sigv4.hash(requestPayload),
-				'b6359072c78d70ebee1e81adcbab4f01bf2c23245fa365ef83fe8f1f955085e2'
-			);
-		});
+		it('should match the hashed payload', () => sigv4.hash(requestPayload)
+			.then(result => assert
+				.strictEqual(
+					result,
+					'b6359072c78d70ebee1e81adcbab4f01bf2c23245fa365ef83fe8f1f955085e2'
+				)
+			)
+		);
 
 		const canonicalForm = 'POST\n/\n\ncontent-type:application/x-www-form-urlencoded; charset=utf-8\nhost:iam.a' +
 			'mazonaws.com\nx-amz-date:20110909T233600Z\n\ncontent-type;host;x-amz-date\nb6359072c78d70ebee1e81adc' +
 			'bab4f01bf2c23245fa365ef83fe8f1f955085e2';
+		const args = [
+			'POST',
+			'/',
+			'',
+			'content-type:application/x-www-form-urlencoded; charset=utf-8\nhost:iam.amazonaws.com\nx-amz' +
+			'-date:20110909T233600Z',
+			signedHeaders,
+			requestPayload
+		];
 
-		it('should match the sample canonical form', () => {
-			assert.strictEqual(
-				sigv4.canonicalRequest(
-					'POST',
-					'/',
-					'',
-					'content-type:application/x-www-form-urlencoded; charset=utf-8\nhost:iam.amazonaws.com\nx-amz' +
-					'-date:20110909T233600Z',
-					signedHeaders,
-					requestPayload
-				),
-				canonicalForm
-			);
-		});
+		it('should match the sample canonical form', () => sigv4.buildCanonicalRequest(...args)
+			.then(result => assert
+				.strictEqual(
+					result,
+					canonicalForm
+				)
+			)
+		);
 
-		it('should match the sample hashed canonical request', () => {
-			assert.strictEqual(
-				sigv4.hash(canonicalForm),
-				hashedCanonicalRequest
-			);
-		});
+		it('should match the sample hashed canonical request', () => sigv4.hash(canonicalForm)
+			.then(result => assert
+				.strictEqual(
+					result,
+					hashedCanonicalRequest
+				)
+			)
+		);
 	});
 
-	const algorithm = 'AWS4-HMAC-SHA256';
 	const credentialScope = '20110909/us-east-1/iam/aws4_request';
 	const stringToSign = 'AWS4-HMAC-SHA256\n20110909T233600Z\n20110909/us-east-1/iam/aws4_request\n3511de7e95d28ecd' +
 		'39e9513b642aee07e54f4941150d8df8bf94b328ef7e55e2';
@@ -71,8 +81,7 @@ describe('Signing AWS Requests', () => {
 	describe('Task 2: Create a String to Sign', () => {
 		it('should match the sample string to sign', () => {
 			assert.strictEqual(
-				sigv4.stringToSign(
-					algorithm,
+				sigv4.buildStringToSign(
 					'20110909T233600Z',
 					credentialScope,
 					hashedCanonicalRequest
@@ -88,18 +97,22 @@ describe('Signing AWS Requests', () => {
 	 * Implements https://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html
 	 */
 	describe('Task 3: Calculate the Signature', () => {
-		it('should match the hex signature', () => {
-			assert.strictEqual(
-				sigv4.sign(
-					'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
-					'20110909',
-					'us-east-1',
-					'iam',
-					stringToSign
-				),
-				signature
-			);
-		});
+		const args = [
+			'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
+			'20110909',
+			'us-east-1',
+			'iam',
+			stringToSign
+		];
+
+		it('should match the hex signature', () => sigv4.sign(...args)
+			.then(result => assert
+				.strictEqual(
+					result,
+					signature
+				)
+			)
+		);
 	});
 
 	/**
@@ -110,8 +123,7 @@ describe('Signing AWS Requests', () => {
 
 		it('should match the authorization', () => {
 			assert.strictEqual(
-				sigv4.authorization(
-					algorithm,
+				sigv4.buildAuthorization(
 					accessKeyId,
 					credentialScope,
 					signedHeaders,
@@ -125,9 +137,9 @@ describe('Signing AWS Requests', () => {
 
 		it('should match the query string', () => {
 			assert.strictEqual(
-				sigv4.querystringify(
+				parsing.querystringify(
 					'Action=CreateUser&UserName=NewUser&Version=2010-05-08&',
-					algorithm,
+					'AWS4-HMAC-SHA256',
 					accessKeyId,
 					'20140611/us-east-1/iam/aws4_request',
 					'20140611T231318Z',
@@ -154,8 +166,9 @@ const suiteFileExtensions = [
 
 function getTestFiles(array, name, directory) {
 	const testFiles = {};
+	const files = fs.readdirSync(directory)
 
-	fs.readdirSync(directory).forEach(file => {
+	for (const file of files) {
 		const fullPath = join(directory, file);
 
 		if (fs.lstatSync(fullPath).isDirectory()) {
@@ -163,11 +176,11 @@ function getTestFiles(array, name, directory) {
 		} else {
 			const ext = file.split('.')[1];
 
-			if (ext && ~suiteFileExtensions.indexOf(ext)) {
+			if (ext && suiteFileExtensions.includes(ext)) {
 				testFiles[ext] = fullPath;
 			}
 		}
-	});
+	}
 
 	if (Object.keys(testFiles).length === suiteFileExtensions.length) {
 		testFiles.name = name;
@@ -193,7 +206,7 @@ function getTestFiles(array, name, directory) {
 
 	getTestFiles(groups, '', join(__dirname, 'fixtures/aws4_testsuite/'));
 
-	groups.forEach(group => {
+	for (const group of groups) {
 		describe('Test Suite: ' + group.name, () => {
 			let request,
 				canonicalRequest,
@@ -212,68 +225,73 @@ function getTestFiles(array, name, directory) {
 			});
 
 			describe('Task 1: Create a Canonical Request for Signature Version 4', () => {
-				it('should match the canonical request', () => {
-					assert.strictEqual(
-						sigv4.requestToCanonicalRequest(request),
-						canonicalRequest
-					);
-				});
+				it('should match the canonical request', () => parsing.requestToCanonicalRequest(request)
+					.then(result => assert
+						.strictEqual(
+							result,
+							canonicalRequest
+						)
+					)
+				);
 			});
 
 			describe('Task 2: Create a String to Sign for Signature Version 4', () => {
-				it('should match the string to sign', () => {
-					assert.strictEqual(
-						sigv4.stringToSign(
-							algorithm,
-							requestDate,
-							credentialScope,
-							sigv4.hash(canonicalRequest)
-						),
-						stringToSign
-					);
-				});
+				it('should match the string to sign', () => sigv4.hash(canonicalRequest)
+					.then(hashedCanonicalRequest => assert
+						.strictEqual(
+							sigv4.buildStringToSign(
+								requestDate,
+								credentialScope,
+								hashedCanonicalRequest
+							),
+							stringToSign
+						)
+					)
+				);
 			});
 
 			describe('Task 3: Calculate the AWS Signature Version 4', () => {
 				it('should match the authorization header value', () => {
 					const signedHeaders = canonicalRequest.split('\n').slice(-2, -1)[0];
-					const signature = sigv4.sign(
+
+					return sigv4.sign(
 						secretAccessKey,
 						requestDate.slice(0, 8),
 						'us-east-1',
 						'service',
 						stringToSign
-					);
-
-					assert.strictEqual(
-						sigv4.authorization(
-							algorithm,
-							accessKeyId,
-							credentialScope,
-							signedHeaders,
-							signature
-						),
-						authorizationHeader
-					);
+					)
+						.then(signature => assert.strictEqual(
+							sigv4.buildAuthorization(
+								accessKeyId,
+								credentialScope,
+								signedHeaders,
+								signature
+							),
+							authorizationHeader
+						)
+					)
 				});
 			});
 
 			describe('The Signed Request', () => {
 				it('should match the signed request value', () => {
+					const args = [
+						request,
+						authorizationHeader
+					];
+
+					// Special case
 					if (group.name === 'post-sts-header-after') {
-						// Special case
-						assert.strictEqual(
-							sigv4.addAuthorization(request, authorizationHeader, securityToken),
-							signedRequest
-						);
-					} else {
-						assert.strictEqual(
-							sigv4.addAuthorization(request, authorizationHeader),
-							signedRequest
-						);
+						args.push(securityToken)
 					}
+
+					assert.strictEqual(
+						parsing.addAuthorization(...args),
+						signedRequest
+					);
 				});
 			});
 		});
-	});
+	}
 }
