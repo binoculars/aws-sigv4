@@ -1,4 +1,4 @@
-import * as sigv4 from '../lib/node/index.js';
+import sigv4 from 'aws-sigv4';
 import {normalize} from 'path';
 import {stringify} from 'querystring';
 
