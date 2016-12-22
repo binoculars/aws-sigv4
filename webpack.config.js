@@ -11,7 +11,7 @@ function config(target) {
 			path: path.resolve(__dirname, 'lib', target),
 			filename: 'index.js', // string
 			library: target === 'node' ? undefined : 'sigv4',
-			libraryTarget: target === 'node' ? 'commonjs' : 'umd',
+			libraryTarget: target === 'node' ? 'commonjs' : 'umd'
 		},
 
 		module: {
@@ -31,7 +31,7 @@ function config(target) {
 						compact: true,
 						comments: false,
 						minified: true
-					},
+					}
 					// options for the loader
 				}
 			]
@@ -41,8 +41,8 @@ function config(target) {
 			extensions: ['.js'],
 
 			alias: {
-				'deps$': path.resolve(__dirname, `src/${target}-deps.js`),
-			},
+				'deps$': path.resolve(__dirname, `src/${target}-deps.js`)
+			}
 		},
 
 		devtool: 'source-map',
