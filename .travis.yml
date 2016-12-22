@@ -6,7 +6,7 @@ cache:
     - node_modules
     - test/fixtures
 before_script:
-  - npm link && npm link aws-sigv4
+  - npm install -g npm@latest
 after_success: npm run coverage
 addons:
   code_climate:
