@@ -11,7 +11,7 @@
   },
   "scripts": {
     "pretest": "scripts/get-fixtures.js",
-    "test": "mocha test/index.js --compilers js:babel-core/register,js:babel-polyfill",
+    "test": "nyc mocha test/index.js --compilers js:babel-core/register,js:babel-polyfill",
     "coverage": "nyc report --reporter=text-lcov | coveralls",
     "build": "webpack"
   },
@@ -45,9 +45,10 @@
     ]
   },
   "nyc": {
-    "exclude": [
-      "lib"
+    "include": [
+      "src/node/*"
     ],
+    "sourceMap": true,
     "cache": true,
     "report-dir": "./coverage"
   },
