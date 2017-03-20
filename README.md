@@ -1,5 +1,7 @@
 # aws-sigv4
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/binoculars/aws-sigv4.svg)](https://greenkeeper.io/)
+
 > A dependency-free, test suite-compliant, AWS Signature Version 4 library in ES6
 
 [![NPM](https://nodei.co/npm/aws-sigv4.png?mini=true)](https://nodei.co/npm/aws-sigv4/)
