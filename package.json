@@ -23,21 +23,21 @@
   "license": "Unlicense",
   "dependencies": {},
   "devDependencies": {
-    "babel-cli": "^6.18.0",
-    "babel-core": "^6.5.2",
-    "babel-loader": "^6.2.8",
-    "babel-polyfill": "^6.5.0",
-    "babel-preset-babili": "0.0.9",
+    "babel-cli": "^6.24.0",
+    "babel-core": "^6.24.0",
+    "babel-loader": "^6.4.1",
+    "babel-polyfill": "^6.23.0",
+    "babel-preset-babili": "0.0.12",
     "babel-preset-es2015-node4": "^2.1.0",
     "chai": "^3.5.0",
     "coveralls": "^2.11.4",
-    "eslint": "^3.5.0",
+    "eslint": "^3.19.0",
     "mocha": "^3.0.2",
     "mocha-eslint": "^3.0.1",
-    "mocha-loader": "^1.0.0",
-    "nyc": "^10.0.0",
-    "unzip": "^0.1.11",
-    "webpack": "^2.1.0-beta.27"
+    "mocha-loader": "1.1.1",
+    "nyc": "10.2.0",
+    "unzip": "0.1.11",
+    "webpack": "2.3.2"
   },
   "babel": {
     "presets": [
