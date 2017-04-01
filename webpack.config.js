@@ -25,7 +25,14 @@ function config(target) {
 					loader: 'babel-loader',
 					options: {
 						presets: [
-							'es2015-node4',
+							[
+								"env",
+								{
+									"targets": {
+										"node": "current"
+									}
+								}
+							],
 							'babili'
 						],
 						compact: true,
