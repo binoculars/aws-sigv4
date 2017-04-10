@@ -25,14 +25,15 @@ sigv4.sign(
 	'us-east-1',
 	'host',
 	stringToSign
-);
+)
+	.then(signature => console.log(signature));
 
 // Or, more specifically for S3:
 
 const date = sigv4
 	.formatDateTime(new Date())
 	.slice(0, 8);
-const credential = `${process.env.AWS_ACCESS_KEY_ID}/${date}/${process.env.AWS_REGION}/s3/aws4_request`
+const credential = `${process.env.AWS_ACCESS_KEY_ID}/${date}/${process.env.AWS_REGION}/s3/aws4_request`;
 const policy = new Buffer(
 	JSON.stringify({
 	    expiration: new Date(Date.now() + 15 * 60000).toISOString(), // 15 minutes from now
@@ -56,7 +57,8 @@ sigv4.sign(
 	process.env.AWS_REGION,
 	's3',
 	policy
-);
+)
+	.then(signature => console.log(sigature));
 ```
 
 See [Authenticating Requests in Browser-Based Uploads Using POST (AWS Signature Version 4)](https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-UsingHTTPPOST.html) as the primary use case.
