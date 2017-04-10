@@ -9,10 +9,10 @@ export {normalize} from 'path';
  *
  * @param {!string} key - The key
  * @param {!string} data - The data to hash
- * @param {?string} [encoding=binary] - The encoding type (hex|binary)
+ * @param {?string} encoding - The encoding type (hex)
  * @returns {Promise<string|buffer>} - The output HMAC
  */
-export function hmac(key, data, encoding='binary') {
+export function hmac(key, data, encoding) {
 	return Promise.resolve(
 		createHmac(algorithm, key)
 			.update(data)
