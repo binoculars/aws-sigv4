@@ -3,6 +3,7 @@ node_js:
   - "4.3.2"
   - lts/argon
   - lts/boron
+  - "7"
 cache:
   directories:
     - node_modules
