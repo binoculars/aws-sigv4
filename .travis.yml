@@ -1,12 +1,13 @@
 language: node_js
 node_js:
   - "4.3.2"
+  - lts/argon
+  - lts/boron
+  - "7"
 cache:
   directories:
     - node_modules
     - test/fixtures
-before_script:
-  - npm link && npm link aws-sigv4
 after_success: npm run coverage
 addons:
   code_climate:

@@ -29,18 +29,17 @@ export function formatDateTime(date) {
  * @param {!string} requestPayload - The payload of the request
  * @returns {Promise<string>} - The canonical request
  */
-export function buildCanonicalRequest(httpRequestMethod, canonicalURI, canonicalQueryString, canonicalHeaders, signedHeaders,
-                                 requestPayload='') {
-	return (requestPayload ? hash(requestPayload) : Promise.resolve(emptyHash))
-		.then(hashedRequestPayload => [
-			httpRequestMethod,
-			canonicalURI,
-			canonicalQueryString,
-			canonicalHeaders,
-			'',
-			signedHeaders,
-			hashedRequestPayload
-		].join('\n'));
+export async function buildCanonicalRequest(httpRequestMethod, canonicalURI, canonicalQueryString, canonicalHeaders,
+                                            signedHeaders, requestPayload='') {
+	return [
+		httpRequestMethod,
+		canonicalURI,
+		canonicalQueryString,
+		canonicalHeaders,
+		'',
+		signedHeaders,
+		await (requestPayload ? hash(requestPayload) : emptyHash)
+	].join('\n');
 }
 
 /**
@@ -71,20 +70,16 @@ export function buildStringToSign(requestDate, credentialScope, hashedCanonicalR
  * @param {!string} service - The AWS service (e.g. `iam`)
  * @returns {Promise<string>} - The pre-calculated signing key
  */
-export function preCalculateSigningKey(secretAccessKey, date, region, service) {
-	const steps = [
+export async function preCalculateSigningKey(secretAccessKey, date, region, service) {
+	return [
 		date,
 		region,
 		service,
 		'aws4_request'
-	];
-
-	let promises = Promise.resolve(`AWS4${secretAccessKey}`);
-
-	for (const data of steps)
-		promises = promises.then(signingKey => hmac(signingKey, data));
-
-	return promises;
+	].reduce(
+		async (acc, val) => hmac(await acc, val),
+		`AWS4${secretAccessKey}`
+	);
 }
 
 /**
@@ -110,9 +105,10 @@ export function preCalculatedSign(signingKey, stringToSign) {
  * @param {!string} stringToSign - The string to sign
  * @returns {Promise<string>} - The signature
  */
-export function sign(secretAccessKey, date, region, service, stringToSign) {
-	return preCalculateSigningKey(secretAccessKey, date, region, service)
-		.then(signingKey => preCalculatedSign(signingKey, stringToSign));
+export async function sign(secretAccessKey, date, region, service, stringToSign) {
+	const signingKey = await preCalculateSigningKey(secretAccessKey, date, region, service);
+
+	return preCalculatedSign(signingKey, stringToSign);
 }
 
 /**

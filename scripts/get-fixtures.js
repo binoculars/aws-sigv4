@@ -69,7 +69,7 @@ function downloadAndUnzipFile(parsedUrl, path) {
 }
 
 const fixtureName = 'aws4_testsuite';
-const fixtureURL = 'https://docs.aws.amazon.com/general/latest/gr/samples/aws4_testsuite.zip';
+const fixtureURL = 'https://s3.amazonaws.com/awsdocs/aws-sig-v4-test-suite.zip';
 
 const fixtureDir = path.join(fixturesDir, fixtureName);
 const fixtureEtagFile = path.join(fixturesDir, `${fixtureName}.ETag`);
