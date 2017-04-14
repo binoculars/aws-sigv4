@@ -14,6 +14,7 @@
 [![Issue Count](https://codeclimate.com/github/binoculars/aws-sigv4/badges/issue_count.svg)](https://codeclimate.com/github/binoculars/aws-sigv4) 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/75a427334dad4aac843674b99bc40e8b)](https://www.codacy.com/app/barrett-harber/aws-sigv4?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=binoculars/aws-sigv4&amp;utm_campaign=Badge_Grade)
 [![Known Vulnerabilities](https://snyk.io/test/github/binoculars/aws-sigv4/badge.svg)](https://snyk.io/test/github/binoculars/aws-sigv4)
+[![Greenkeeper badge](https://badges.greenkeeper.io/binoculars/aws-sigv4.svg)](https://greenkeeper.io/)
 
 ## Example - ES2017 (Node 7.6+)
 ```JavaScript
