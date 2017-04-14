@@ -26,10 +26,10 @@ function config(target) {
 					options: {
 						presets: [
 							[
-								"env",
+								'env',
 								{
-									"targets": {
-										"node": 4
+									targets: {
+										node: 6
 									}
 								}
 							]
