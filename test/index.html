@@ -29,12 +29,10 @@
 		 * Implements https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
 		 */
 		describe('Task 1: Create a Canonical Request', () => {
-			it('should match the hashed payload', () => sigv4.hash(requestPayload)
-				.then(result => assert
-					.strictEqual(
-						result,
-						'b6359072c78d70ebee1e81adcbab4f01bf2c23245fa365ef83fe8f1f955085e2'
-					)
+			it('should match the hashed payload', async () =>
+				assert.strictEqual(
+					await sigv4.hash(requestPayload),
+					'b6359072c78d70ebee1e81adcbab4f01bf2c23245fa365ef83fe8f1f955085e2'
 				)
 			);
 
@@ -51,21 +49,17 @@
 				requestPayload
 			];
 
-			it('should match the sample canonical form', () => sigv4.buildCanonicalRequest(...args)
-				.then(result => assert
-					.strictEqual(
-						result,
-						canonicalForm
-					)
+			it('should match the sample canonical form', async () =>
+				assert.strictEqual(
+					await sigv4.buildCanonicalRequest(...args),
+					canonicalForm
 				)
 			);
 
-			it('should match the sample hashed canonical request', () => sigv4.hash(canonicalForm)
-				.then(result => assert
-					.strictEqual(
-						result,
-						hashedCanonicalRequest
-					)
+			it('should match the sample hashed canonical request', async () =>
+				assert.strictEqual(
+					await sigv4.hash(canonicalForm),
+					hashedCanonicalRequest
 				)
 			);
 		});
@@ -104,12 +98,10 @@
 				stringToSign
 			];
 
-			it('should match the hex signature', () => sigv4.sign(...args)
-				.then(result => assert
-					.strictEqual(
-						result,
-						signature
-					)
+			it('should match the hex signature', async () =>
+				assert.strictEqual(
+					await sigv4.sign(...args),
+					signature
 				)
 			);
 		});

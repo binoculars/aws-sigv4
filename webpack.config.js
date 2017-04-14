@@ -29,11 +29,10 @@ function config(target) {
 								"env",
 								{
 									"targets": {
-										"node": "current"
+										"node": 4
 									}
 								}
-							],
-							'babili'
+							]
 						],
 						compact: true,
 						comments: false,
