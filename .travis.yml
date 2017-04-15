@@ -19,12 +19,12 @@ after_success:
 
   echo $TRAVIS_NODE_VERSION
 
-  if [ $TRAVIS_NODE_VERSION != 7 ]; then
+  if [ $TRAVIS_NODE_VERSION != '7' ]; then
     exit 0
   fi
 
   # Coverage
-  yarn run coverage
+  #yarn run coverage
 
   SOURCE_BRANCH='master'
   TARGET_BRANCH='gh-pages'
