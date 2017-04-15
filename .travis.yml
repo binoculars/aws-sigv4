@@ -1,14 +1,70 @@
+dist: trusty
+sudo: false
 language: node_js
 node_js:
-  - "4.3.2"
-  - lts/argon
-  - lts/boron
-  - "7"
+- 4.3.2
+- lts/argon
+- lts/boron
+- '7'
+env:
+  global:
+  - COMMIT_AUTHOR_EMAIL: "barrett.harber@gmail.com"
 cache:
+  yarn: true
   directories:
-    - node_modules
-    - test/fixtures
-after_success: npm run coverage
+  - test/fixtures
+after_success:
+- |
+  set -e
+
+  echo $TRAVIS_NODE_VERSION
+
+  if [ $TRAVIS_NODE_VERSION != 7 ]; then
+    exit 0
+  fi
+
+  # Coverage
+  yarn run coverage
+
+  SOURCE_BRANCH='master'
+  TARGET_BRANCH='gh-pages'
+
+  if [ "$TRAVIS_PULL_REQUEST" != "false" -o $TRAVIS_BRANCH != $SOURCE_BRANCH ]; then
+    exit 0
+  fi
+
+  REPO=`git config remote.origin.url`
+  SSH_REPO=${REPO/https:\/\/github.com\//git@github.com:}
+  SHA=`git rev-parse --verify HEAD`
+
+  openssl aes-256-cbc -K $encrypted_752f08bd0f71_key -iv $encrypted_752f08bd0f71_iv -in deploy_key.enc -out deploy_key -d
+  chmod 600 deploy_key
+  eval `ssh-agent -s`
+  ssh-add deploy_key
+
+  git clone $REPO gh-pages
+  cd gh-pages
+  git checkout $TARGET_BRANCH || git checkout --orphan $TARGET_BRANCH
+  cd ..
+
+  # Clean out existing contents
+  rm -rf gh-pages/**/* || exit 0
+
+  yarn global add esdoc
+  yarn run docs
+  cd gh-pages
+
+  if [ -z `git diff --exit-code` ]; then
+    echo "No changes to the output on this push; exiting."
+    exit 0
+  fi
+
+  git config user.name "Travis CI"
+  git config user.email "$COMMIT_AUTHOR_EMAIL"
+  git add .
+  git commit -m "Deploy to GitHub Pages: ${SHA}"
+  git push $SSH_REPO $TARGET_BRANCH
+
 addons:
   code_climate:
-    repo_token: 41b073ed873540cfbac2c98ab1c7c79b3e894bebc7b462bd04f5988650270385
+    repo_token: ""
