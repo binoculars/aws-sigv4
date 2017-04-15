@@ -2,6 +2,11 @@ import {normalize} from 'path';
 import {createHmac, createHash} from 'crypto';
 const algorithm = 'sha256';
 
+/**
+ * Normalizes the path
+ *
+ * @return {string}
+ */
 export {normalize} from 'path';
 
 /**
@@ -12,12 +17,10 @@ export {normalize} from 'path';
  * @param {?string} encoding - The encoding type (hex)
  * @returns {Promise<string|buffer>} - The output HMAC
  */
-export function hmac(key, data, encoding) {
-	return Promise.resolve(
-		createHmac(algorithm, key)
-			.update(data)
-			.digest(encoding)
-	);
+export async function hmac(key, data, encoding) {
+	return createHmac(algorithm, key)
+		.update(data)
+		.digest(encoding);
 }
 
 /**
@@ -26,10 +29,8 @@ export function hmac(key, data, encoding) {
  * @param {!string} data - The data to hash
  * @returns {Promise<string>} - The hashed output
  */
-export function hash(data) {
-	return Promise.resolve(
-		createHash(algorithm)
-			.update(data)
-			.digest('hex')
-	);
+export async function hash(data) {
+	return createHash(algorithm)
+		.update(data)
+		.digest('hex');
 }

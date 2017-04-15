@@ -26,14 +26,13 @@ function config(target) {
 					options: {
 						presets: [
 							[
-								"env",
+								'env',
 								{
-									"targets": {
-										"node": "current"
+									targets: {
+										node: 6
 									}
 								}
-							],
-							'babili'
+							]
 						],
 						compact: true,
 						comments: false,

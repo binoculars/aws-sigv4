@@ -2,8 +2,19 @@ const crypto = window.crypto || window.msCrypto;
 const subtle = crypto.subtle || crypto.webkitSubtle;
 const algorithm = 'sha-256';
 
+/**
+ * Normalizes the path
+ *
+ * @returns {string}
+ */
 export const normalize = encodeURI;
 
+/**
+ * Transforms an ArrayBuffer into a hexadecimal string
+ *
+ * @param buffer - An ArrayBuffer
+ * @returns {string}
+ */
 function toHex(buffer) {
 	const bytes = new Uint8Array(buffer);
 
@@ -17,6 +28,11 @@ function toHex(buffer) {
 	return str;
 }
 
+/**
+ * Transforms a hexadecimal string into an ArrayBuffer
+ *
+ * @returns {ArrayBuffer}
+ */
 const toBinary = ('TextEncoder' in window) ?
 	(str => (new TextEncoder()).encode(str)) :
 	(str => {
@@ -44,28 +60,25 @@ const algorithmSign = {
  *
  * @param {!string|ArrayBuffer} key - The key
  * @param {!string} data - The data to hash
- * @param {?string} [encoding=binary] - The encoding type (hex|binary)
+ * @param {?string} encoding - The encoding type (hex)
  * @returns {string|ArrayBuffer} - The output HMAC
  */
-export function hmac(key, data, encoding='binary') {
-	return subtle
-		.importKey(
-			'raw',
-			typeof key === 'string' ? toBinary(key) : key,
-			algorithmSign,
-			false,
-			['sign']
-		)
-		.then(importedKey => subtle
-			.sign(
-				algorithmSign,
-				importedKey,
-				toBinary(data)
-			)
-		)
-		.then(buffer =>
-			encoding === 'binary' ? buffer : toHex(buffer)
-		);
+export async function hmac(key, data, encoding) {
+	const importedKey = await subtle.importKey(
+		'raw',
+		typeof key === 'string' ? toBinary(key) : key,
+		algorithmSign,
+		false,
+		['sign']
+	);
+
+	const buffer = await subtle.sign(
+		algorithmSign,
+		importedKey,
+		toBinary(data)
+	);
+
+	return encoding === 'hex' ? toHex(buffer) : buffer;
 }
 
 /**
@@ -74,11 +87,11 @@ export function hmac(key, data, encoding='binary') {
  * @param {!string} data - The data to hash
  * @returns {string} - The hashed output
  */
-export function hash(data) {
-	return subtle
-		.digest(
+export async function hash(data) {
+	return toHex(
+		await subtle.digest(
 			hashOptions,
 			toBinary(data)
 		)
-		.then(toHex);
+	);
 }

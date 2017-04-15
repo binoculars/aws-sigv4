@@ -1,6 +1,6 @@
-ecmaFeatures:
-  modules: true
-  jsx: false
+parserOptions:
+  ecmaVersion: 2017
+  sourceType: module
 
 env:
   amd: false
@@ -210,6 +210,3 @@ rules:
   prefer-spread: 0
   prefer-template: 0
   require-yield: 0
-
-parserOptions:
-  sourceType: "module"
