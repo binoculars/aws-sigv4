@@ -2,31 +2,34 @@
   {
     "__docId__": 0,
     "kind": "file",
+    "name": "src/index.js",
+    "content": "import {hash, hmac, normalize} from 'deps';\n\n/** @function\n * Computes the hash\n *\n * @name hash\n * @param {!string} data - The data to hash\n * @returns {Promise<string>} - The hashed output\n */\nexport {hash};\n\nconst algorithm = 'AWS4-HMAC-SHA256';\nconst emptyHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';\n\n/**\n * Formats a Date object to an AWS date string\n *\n * @param {!Date} date - The date\n * @returns {string} - The formatted date string\n */\nexport function formatDateTime(date) {\n\treturn date\n\t\t.toISOString()\n\t\t.replace(/-|:|(\\.\\d+)/g, '');\n}\n\n/**\n * Creates the canonical request\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html\n *\n * @param {!string} httpRequestMethod - The HTTP request method (e.g. `GET` or `POST`)\n * @param {!string} canonicalURI - The canonical URI\n * @param {!string} canonicalQueryString - The canonical query string\n * @param {!string} canonicalHeaders - The canonical headers\n * @param {!string} signedHeaders - The signed headers\n * @param {!string} requestPayload - The payload of the request\n * @returns {Promise<string>} - The canonical request\n */\nexport async function buildCanonicalRequest(httpRequestMethod, canonicalURI, canonicalQueryString, canonicalHeaders,\n                                            signedHeaders, requestPayload='') {\n\treturn [\n\t\thttpRequestMethod,\n\t\tcanonicalURI,\n\t\tcanonicalQueryString,\n\t\tcanonicalHeaders,\n\t\t'',\n\t\tsignedHeaders,\n\t\tawait (requestPayload ? hash(requestPayload) : emptyHash)\n\t].join('\\n');\n}\n\n/**\n * Creates the string to sign\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-create-string-to-sign.html\n *\n * @param {!string} requestDate - The request date (`YYYMMDDThhmmssZ`)\n * @param {!string} credentialScope - the credential scope (formatted as `YYYYMMDD/region/service/aws4_request`)\n * @param {!string} hashedCanonicalRequest\n * @returns {string} - The string to sign\n */\nexport function buildStringToSign(requestDate, credentialScope, hashedCanonicalRequest) {\n\treturn [\n\t\talgorithm,\n\t\trequestDate,\n\t\tcredentialScope,\n\t\thashedCanonicalRequest\n\t].join('\\n');\n}\n\n/**\n * Pre-calculates the signing key\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html\n *\n * @param {!string} secretAccessKey - The secret access key for the AWS account\n * @param {!string} date - The date in YYYYMMDD format\n * @param {!string} region - The AWS region (e.g. `us-east-1`)\n * @param {!string} service - The AWS service (e.g. `iam`)\n * @returns {Promise<string>} - The pre-calculated signing key\n */\nexport async function preCalculateSigningKey(secretAccessKey, date, region, service) {\n\treturn [\n\t\tdate,\n\t\tregion,\n\t\tservice,\n\t\t'aws4_request'\n\t].reduce(\n\t\tasync (acc, val) => hmac(await acc, val),\n\t\t`AWS4${secretAccessKey}`\n\t);\n}\n\n/**\n * Pre-calculates the signature\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html\n *\n * @param {!string} signingKey - The pre-calculated signing key\n * @param {!string} stringToSign - The string to sign\n * @returns {Promise<string>} - The pre-calculated signature\n */\nexport function preCalculatedSign(signingKey, stringToSign) {\n\treturn hmac(signingKey, stringToSign, 'hex');\n}\n\n/**\n * Calculates the signature\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html\n *\n * @param {!string} secretAccessKey - The secret access key for the AWS account\n * @param {!string} date - The date in YYYYMMDD format\n * @param {!string} region - The AWS region (e.g. `us-east-1`)\n * @param {!string} service - The AWS service (e.g. `iam`)\n * @param {!string} stringToSign - The string to sign\n * @returns {Promise<string>} - The signature\n */\nexport async function sign(secretAccessKey, date, region, service, stringToSign) {\n\tconst signingKey = await preCalculateSigningKey(secretAccessKey, date, region, service);\n\n\treturn preCalculatedSign(signingKey, stringToSign);\n}\n\n/**\n * Creates the authorization string\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html\n *\n * @param {!string} accessKeyId\n * @param {!string} credentialScope\n * @param {!string} signedHeaders\n * @param {!string} signature\n * @returns {string}\n */\nexport function buildAuthorization(accessKeyId, credentialScope, signedHeaders, signature) {\n\treturn algorithm + ' ' + [\n\t\t['Credential', `${accessKeyId}/${credentialScope}`],\n\t\t['SignedHeaders', signedHeaders],\n\t\t['Signature', signature]\n\t]\n\t\t.map(item => item.join('='))\n\t\t.join(', ');\n}\n",
     "static": true,
-    "variation": null,
-    "name": "src/index.es6",
-    "memberof": null,
-    "longname": "src/index.es6",
+    "longname": "src/index.js",
     "access": null,
     "description": null,
-    "lineNumber": 1,
-    "content": "'use strict';\n\nimport {createHmac, createHash} from 'crypto';\nimport {normalize} from 'path';\nimport {stringify} from 'querystring';\n\nconst CRLF = '\\n';\n\n/**\n * Computes the HMAC\n *\n * @param {!string} key - The key\n * @param {!string} data - The data to hash\n * @param {?string} [encoding=binary] - The encoding type (hex|binary)\n * @returns {string|buffer} - The output HMAC\n */\nfunction hmac(key, data, encoding='binary') {\n\treturn createHmac('sha256', key)\n\t\t.update(data)\n\t\t.digest(encoding);\n}\n\n/**\n * Computes the hash\n *\n * @param {!string} data - The data to hash\n * @returns {string} - The hashed output\n */\nexport function hash(data) {\n\treturn createHash('sha256')\n\t\t.update(data)\n\t\t.digest('hex');\n}\n\n/**\n * Formats a Date object to an AWS date string\n *\n * @param {!Date} date - The date\n * @returns {string} - The formatted date string\n */\nexport function formatDateTime(date) {\n\treturn date.toISOString().replace(/-|:|(\\.\\d+)/g, '');\n}\n\n/**\n * Creates the canonical request\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html\n *\n * @param {!string} httpRequestMethod - The HTTP request method (e.g. `GET` or `POST`)\n * @param {!string} canonicalURI - The canonical URI\n * @param {!string} canonicalQueryString - The canonical query string\n * @param {!string} canonicalHeaders - The canonical headers\n * @param {!string} signedHeaders - The signed headers\n * @param {!string} requestPayload - The payload of the request\n * @returns {string} - The canonical request\n */\nexport function canonicalRequest(httpRequestMethod, canonicalURI, canonicalQueryString, canonicalHeaders, signedHeaders,\n                                 requestPayload) {\n\treturn [\n\t\thttpRequestMethod,\n\t\tcanonicalURI,\n\t\tcanonicalQueryString,\n\t\tcanonicalHeaders,\n\t\t'',\n\t\tsignedHeaders,\n\t\thash(requestPayload || '')\n\t].join('\\n');\n}\n\n/**\n * Creates the string to sign\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-create-string-to-sign.html\n *\n * @param {!string} algorithm - The algorithm (`AWS4-HMAC-SHA256`)\n * @param {!string} requestDate - The request date (`YYYMMDDThhmmssZ`)\n * @param {!string} credentialScope - the credential scope (formatted as `YYYYMMDD/region/service/aws4_request`)\n * @param {!string} hashedCanonicalRequest\n * @returns {string} - The string to sign\n */\nexport function stringToSign(algorithm, requestDate, credentialScope, hashedCanonicalRequest) {\n\treturn [\n\t\talgorithm,\n\t\trequestDate,\n\t\tcredentialScope,\n\t\thashedCanonicalRequest\n\t].join('\\n');\n}\n\n/**\n * Calculates the signature\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html\n *\n * @param {!string} secretAccessKey - The secret access key for the AWS account\n * @param {!string} date - The date in YYYYMMDD format\n * @param {!string} region - The AWS region (e.g. `us-east-1`)\n * @param {!string} service - The AWS service (e.g. `iam`)\n * @param {!string} stringToSign - The string to sign\n * @returns {string} - The signature\n */\nexport function sign(secretAccessKey, date, region, service, stringToSign) {\n\tlet signingKey = 'AWS4' + secretAccessKey;\n\n\t[\n\t\tdate,\n\t\tregion,\n\t\tservice,\n\t\t'aws4_request'\n\t].forEach(data => signingKey = hmac(signingKey, data));\n\n\treturn hmac(signingKey, stringToSign, 'hex');\n}\n\n/**\n * Creates the authorization string\n * https://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html\n *\n * @param {!string} algorithm\n * @param {!string} accessKeyId\n * @param {!string} credentialScope\n * @param {!string} signedHeaders\n * @param {!string} signature\n * @returns {string}\n */\nexport function authorization(algorithm, accessKeyId, credentialScope, signedHeaders, signature) {\n\tlet auth = {\n\t\t'Credential': accessKeyId + '/' + credentialScope,\n\t\t'SignedHeaders': signedHeaders,\n\t\t'Signature': signature\n\t};\n\n\treturn [\n\t\talgorithm,\n\t\tObject\n\t\t\t.keys(auth)\n\t\t\t.map(key => [key, auth[key]].join('='))\n\t\t\t.join(', ')\n\t].join(' ');\n}\n\n/**\n * Creates a query string\n *\n * @param {!string} action\n * @param {!string} algorithm\n * @param {!string} accessKeyId\n * @param {!string} credentialScope\n * @param {!string} date\n * @param {!string} timeoutInterval\n * @param {!string} signedHeaders\n * @param {!string} signature\n * @returns {string}\n */\nexport function querystringify(action, algorithm, accessKeyId, credentialScope, date, timeoutInterval, signedHeaders,\n                               signature) {\n\treturn action + stringify({\n\t\t'X-Amz-Algorithm': algorithm,\n\t\t'X-Amz-Credential': accessKeyId + '/' + credentialScope,\n\t\t'X-Amz-Date': date,\n\t\t'X-Amz-Expires': timeoutInterval,\n\t\t'X-Amz-SignedHeaders': signedHeaders,\n\t\t'X-Amz-Signature': signature\n\t});\n}\n\n/**\n * Parses an HTTP request into a header and body\n *\n * @param {!string} request\n * @returns {{head: string, body: string}}\n */\nexport function parseRequest(request) {\n\tlet [head, body] = request.split(CRLF.repeat(2));\n\n\treturn {head, body};\n}\n\n/**\n * Unparses an HTTP header and an HTTP body into an HTTP request\n *\n * @param {!string} head\n * @param {string} body\n * @returns {string}\n */\nfunction unparseRequest(head, body) {\n\treturn [\n\t\thead,\n\t\tbody\n\t].join(CRLF.repeat(2)).trim();\n}\n\n/**\n * Parses an HTTP header into its component parts\n *\n * @param {!string} head\n * @returns {{method: string, requestURI: string, httpVersion: string, headers: Array.<string>}}\n */\nexport function parseHead(head) {\n\tlet lines = head.split(CRLF);\n\tlet requestLine = lines[0];\n\tlet headers = lines.slice(1);\n\tlet {method, requestURI, httpVersion} = parseRequestLine(requestLine);\n\n\treturn {method, requestURI, httpVersion, headers};\n}\n\n/**\n * Parses an HTTP request line into its component parts\n *\n * @param {!string} requestLine\n * @returns {{method: string, requestURI: string, httpVersion: string}}\n */\nfunction parseRequestLine(requestLine) {\n\tlet method = requestLine\n\t\t.match(/^\\s*[A-Z]+\\s/ig)[0];\n\tlet httpVersion = requestLine\n\t\t.match(/\\s+http\\/\\d+\\.\\d+$/ig)[0];\n\tlet requestURI = requestLine\n\t\t.slice(method.length, -httpVersion.length);\n\n\treturn {\n\t\tmethod: method.trim(),\n\t\trequestURI: requestURI,\n\t\thttpVersion: httpVersion.trim()\n\t};\n}\n\n/**\n * Parses a URL into its canonical parts\n *\n * @param {!string} rawUrl\n * @returns {{canonicalURI: string, canonicalQueryString: string}}\n */\nfunction parseUrl(rawUrl) {\n\tlet [uri, query] = rawUrl.split(/\\?(.+)/);\n\tlet queryParams = {};\n\tlet canonicalQueryString = '';\n\n\tif (query) {\n\t\tlet splitQuery = query.replace(/\\s(.+)/, '')\n\t\t\t.split('&');\n\t\tlet correctedQuery = [];\n\n\t\tif (splitQuery.length > 1) {\n\t\t\tfor (let i = 0; i < splitQuery.length; i++) {\n\t\t\t\tcorrectedQuery.push(splitQuery[i] + (~splitQuery[i].indexOf('=') ? '' : '&' + splitQuery[++i]));\n\t\t\t}\n\t\t} else {\n\t\t\tcorrectedQuery = splitQuery;\n\t\t}\n\n\t\tcorrectedQuery.forEach(param => {\n\t\t\tlet [name, val] = param.split('=');\n\n\t\t\tif (name in queryParams) {\n\t\t\t\tqueryParams[name].push(val);\n\t\t\t} else {\n\t\t\t\tqueryParams[name] = [val];\n\t\t\t}\n\t\t});\n\n\t\tlet queryParamsList = Object.keys(queryParams).sort();\n\n\t\tcanonicalQueryString = queryParamsList.map(key => {\n\t\t\treturn queryParams[key]\n\t\t\t\t.sort()\n\t\t\t\t.map(val => {\n\t\t\t\t\treturn [\n\t\t\t\t\t\tencodeURIComponent(key),\n\t\t\t\t\t\tencodeURIComponent(val || '')\n\t\t\t\t\t].join('=');\n\t\t\t\t})\n\t\t\t\t.join('&');\n\t\t}).join('&');\n\t}\n\n\treturn {\n\t\tcanonicalURI: normalize(uri),\n\t\tcanonicalQueryString\n\t};\n}\n\n/**\n * Parses raw headers into canonical headers and signed headers\n *\n * @param {string} rawHeaders\n * @returns {{canonicalHeadersString: string, signedHeadersString: string}}\n */\nfunction parseCanonicalHeaders(rawHeaders) {\n\tlet headersMap = {};\n\tlet lastHeaderName;\n\n\trawHeaders.forEach(header => {\n\t\tlet [name, value] = header.split(/:(.+)/).slice(0, 2);\n\n\t\tif (value) {\n\t\t\tname = name.toLowerCase();\n\t\t\tlastHeaderName = name;\n\t\t} else {\n\t\t\tname = lastHeaderName;\n\t\t\tvalue = header;\n\t\t}\n\n\t\tvalue = value.replace(/\\s+/g, ' ').trim();\n\n\t\tif (name in headersMap) {\n\t\t\theadersMap[name].push(value);\n\t\t} else {\n\t\t\theadersMap[name] = [value];\n\t\t}\n\t});\n\n\tlet signedHeadersList = Object.keys(headersMap).sort();\n\n\tlet canonicalHeadersString = signedHeadersList.map(key => {\n\t\treturn [\n\t\t\tkey,\n\t\t\theadersMap[key].join(',')\n\t\t].join(':');\n\t}).join('\\n');\n\n\tlet signedHeadersString = signedHeadersList.join(';');\n\n\treturn {canonicalHeadersString, signedHeadersString};\n}\n\n/**\n * Adds the authorization headers, and optionally, the STS security token to the request\n *\n * @param {!string} request\n * @param {!string} authorization\n * @param {!string} [securityToken]\n * @returns {string}\n */\nexport function addAuthorization(request, authorization, securityToken) {\n\tlet parsedRequest = parseRequest(request);\n\n\treturn unparseRequest(\n\t\t[\n\t\t\tparsedRequest.head,\n\t\t\tsecurityToken ? CRLF + 'X-Amz-Security-Token:' + securityToken : '',\n\t\t\tCRLF + 'Authorization: ' + authorization\n\t\t].join(''),\n\t\tparsedRequest.body\n\t);\n}\n\n/**\n * Creates a canonical request from a standard request\n *\n * @param {!string} request\n * @returns {string}\n */\nexport function requestToCanonicalRequest(request) {\n\tlet parsedRequest = parseRequest(request);\n\tlet parsedHead = parseHead(parsedRequest.head);\n\tlet parsedUrl = parseUrl(parsedHead.requestURI);\n\tlet parsedHeaders = parseCanonicalHeaders(parsedHead.headers);\n\n\treturn canonicalRequest(\n\t\tparsedHead.method,\n\t\tparsedUrl.canonicalURI,\n\t\tparsedUrl.canonicalQueryString,\n\t\tparsedHeaders.canonicalHeadersString,\n\t\tparsedHeaders.signedHeadersString,\n\t\tparsedRequest.body\n\t);\n}"
+    "lineNumber": 1
   },
   {
     "__docId__": 1,
     "kind": "variable",
+    "name": "algorithm",
+    "memberof": "src/index.js",
     "static": true,
-    "variation": null,
-    "name": "CRLF",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~CRLF",
+    "longname": "src/index.js~algorithm",
     "access": null,
     "export": false,
-    "importPath": "aws-sigv4/src/index.es6",
+    "importPath": "aws-sigv4/src/index.js",
     "importStyle": null,
     "description": null,
-    "lineNumber": 7,
+    "lineNumber": 12,
     "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
     "type": {
       "types": [
         "string"
@@ -35,125 +38,45 @@
   },
   {
     "__docId__": 2,
-    "kind": "function",
+    "kind": "variable",
+    "name": "emptyHash",
+    "memberof": "src/index.js",
     "static": true,
-    "variation": null,
-    "name": "hmac",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~hmac",
+    "longname": "src/index.js~emptyHash",
     "access": null,
     "export": false,
-    "importPath": "aws-sigv4/src/index.es6",
+    "importPath": "aws-sigv4/src/index.js",
     "importStyle": null,
-    "description": "Computes the HMAC",
-    "lineNumber": 17,
+    "description": null,
+    "lineNumber": 13,
+    "undocument": true,
     "unknown": [
       {
-        "tagName": "@returns",
-        "tagValue": "{string|buffer} - The output HMAC"
+        "tagName": "@_undocument",
+        "tagValue": ""
       }
     ],
-    "params": [
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "key",
-        "description": "The key"
-      },
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "data",
-        "description": "The data to hash"
-      },
-      {
-        "nullable": true,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": true,
-        "defaultValue": "binary",
-        "defaultRaw": "binary",
-        "name": "encoding",
-        "description": "The encoding type (hex|binary)"
-      }
-    ],
-    "return": {
-      "nullable": null,
+    "type": {
       "types": [
-        "string",
-        "buffer"
-      ],
-      "spread": false,
-      "description": "The output HMAC"
-    },
-    "generator": false
+        "string"
+      ]
+    }
   },
   {
     "__docId__": 3,
     "kind": "function",
-    "static": true,
-    "variation": null,
-    "name": "hash",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~hash",
-    "access": null,
-    "export": true,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": "{hash}",
-    "description": "Computes the hash",
-    "lineNumber": 29,
-    "unknown": [
-      {
-        "tagName": "@returns",
-        "tagValue": "{string} - The hashed output"
-      }
-    ],
-    "params": [
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "data",
-        "description": "The data to hash"
-      }
-    ],
-    "return": {
-      "nullable": null,
-      "types": [
-        "string"
-      ],
-      "spread": false,
-      "description": "The hashed output"
-    },
-    "generator": false
-  },
-  {
-    "__docId__": 4,
-    "kind": "function",
-    "static": true,
-    "variation": null,
     "name": "formatDateTime",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~formatDateTime",
+    "memberof": "src/index.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/index.js~formatDateTime",
     "access": null,
     "export": true,
-    "importPath": "aws-sigv4/src/index.es6",
+    "importPath": "aws-sigv4/src/index.js",
     "importStyle": "{formatDateTime}",
     "description": "Formats a Date object to an AWS date string",
-    "lineNumber": 41,
+    "lineNumber": 21,
     "unknown": [
       {
         "tagName": "@returns",
@@ -179,27 +102,27 @@
       ],
       "spread": false,
       "description": "The formatted date string"
-    },
-    "generator": false
+    }
   },
   {
-    "__docId__": 5,
+    "__docId__": 4,
     "kind": "function",
+    "name": "buildCanonicalRequest",
+    "memberof": "src/index.js",
+    "generator": false,
+    "async": true,
     "static": true,
-    "variation": null,
-    "name": "canonicalRequest",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~canonicalRequest",
+    "longname": "src/index.js~buildCanonicalRequest",
     "access": null,
     "export": true,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": "{canonicalRequest}",
+    "importPath": "aws-sigv4/src/index.js",
+    "importStyle": "{buildCanonicalRequest}",
     "description": "Creates the canonical request\nhttps://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html",
-    "lineNumber": 57,
+    "lineNumber": 39,
     "unknown": [
       {
         "tagName": "@returns",
-        "tagValue": "{string} - The canonical request"
+        "tagValue": "{Promise<string>} - The canonical request"
       }
     ],
     "params": [
@@ -267,27 +190,27 @@
     "return": {
       "nullable": null,
       "types": [
-        "string"
+        "Promise<string>"
       ],
       "spread": false,
       "description": "The canonical request"
-    },
-    "generator": false
+    }
   },
   {
-    "__docId__": 6,
+    "__docId__": 5,
     "kind": "function",
+    "name": "buildStringToSign",
+    "memberof": "src/index.js",
+    "generator": false,
+    "async": false,
     "static": true,
-    "variation": null,
-    "name": "stringToSign",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~stringToSign",
+    "longname": "src/index.js~buildStringToSign",
     "access": null,
     "export": true,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": "{stringToSign}",
+    "importPath": "aws-sigv4/src/index.js",
+    "importStyle": "{buildStringToSign}",
     "description": "Creates the string to sign\nhttps://docs.aws.amazon.com/general/latest/gr/sigv4-create-string-to-sign.html",
-    "lineNumber": 80,
+    "lineNumber": 61,
     "unknown": [
       {
         "tagName": "@returns",
@@ -295,16 +218,6 @@
       }
     ],
     "params": [
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "algorithm",
-        "description": "The algorithm (`AWS4-HMAC-SHA256`)"
-      },
       {
         "nullable": false,
         "types": [
@@ -343,27 +256,151 @@
       ],
       "spread": false,
       "description": "The string to sign"
-    },
-    "generator": false
+    }
+  },
+  {
+    "__docId__": 6,
+    "kind": "function",
+    "name": "preCalculateSigningKey",
+    "memberof": "src/index.js",
+    "generator": false,
+    "async": true,
+    "static": true,
+    "longname": "src/index.js~preCalculateSigningKey",
+    "access": null,
+    "export": true,
+    "importPath": "aws-sigv4/src/index.js",
+    "importStyle": "{preCalculateSigningKey}",
+    "description": "Pre-calculates the signing key\nhttps://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html",
+    "lineNumber": 80,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{Promise<string>} - The pre-calculated signing key"
+      }
+    ],
+    "params": [
+      {
+        "nullable": false,
+        "types": [
+          "string"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "secretAccessKey",
+        "description": "The secret access key for the AWS account"
+      },
+      {
+        "nullable": false,
+        "types": [
+          "string"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "date",
+        "description": "The date in YYYYMMDD format"
+      },
+      {
+        "nullable": false,
+        "types": [
+          "string"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "region",
+        "description": "The AWS region (e.g. `us-east-1`)"
+      },
+      {
+        "nullable": false,
+        "types": [
+          "string"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "service",
+        "description": "The AWS service (e.g. `iam`)"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "Promise<string>"
+      ],
+      "spread": false,
+      "description": "The pre-calculated signing key"
+    }
   },
   {
     "__docId__": 7,
     "kind": "function",
+    "name": "preCalculatedSign",
+    "memberof": "src/index.js",
+    "generator": false,
+    "async": false,
     "static": true,
-    "variation": null,
-    "name": "sign",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~sign",
+    "longname": "src/index.js~preCalculatedSign",
     "access": null,
     "export": true,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": "{sign}",
-    "description": "Calculates the signature\nhttps://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html",
+    "importPath": "aws-sigv4/src/index.js",
+    "importStyle": "{preCalculatedSign}",
+    "description": "Pre-calculates the signature\nhttps://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html",
     "lineNumber": 100,
     "unknown": [
       {
         "tagName": "@returns",
-        "tagValue": "{string} - The signature"
+        "tagValue": "{Promise<string>} - The pre-calculated signature"
+      }
+    ],
+    "params": [
+      {
+        "nullable": false,
+        "types": [
+          "string"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "signingKey",
+        "description": "The pre-calculated signing key"
+      },
+      {
+        "nullable": false,
+        "types": [
+          "string"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "stringToSign",
+        "description": "The string to sign"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "Promise<string>"
+      ],
+      "spread": false,
+      "description": "The pre-calculated signature"
+    }
+  },
+  {
+    "__docId__": 8,
+    "kind": "function",
+    "name": "sign",
+    "memberof": "src/index.js",
+    "generator": false,
+    "async": true,
+    "static": true,
+    "longname": "src/index.js~sign",
+    "access": null,
+    "export": true,
+    "importPath": "aws-sigv4/src/index.js",
+    "importStyle": "{sign}",
+    "description": "Calculates the signature\nhttps://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html",
+    "lineNumber": 115,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{Promise<string>} - The signature"
       }
     ],
     "params": [
@@ -421,109 +458,27 @@
     "return": {
       "nullable": null,
       "types": [
-        "string"
+        "Promise<string>"
       ],
       "spread": false,
       "description": "The signature"
-    },
-    "generator": false
-  },
-  {
-    "__docId__": 8,
-    "kind": "function",
-    "static": true,
-    "variation": null,
-    "name": "authorization",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~authorization",
-    "access": null,
-    "export": true,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": "{authorization}",
-    "description": "Creates the authorization string\nhttps://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html",
-    "lineNumber": 124,
-    "unknown": [
-      {
-        "tagName": "@returns",
-        "tagValue": "{string}"
-      }
-    ],
-    "params": [
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "algorithm",
-        "description": ""
-      },
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "accessKeyId",
-        "description": ""
-      },
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "credentialScope",
-        "description": ""
-      },
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "signedHeaders",
-        "description": ""
-      },
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "signature",
-        "description": ""
-      }
-    ],
-    "return": {
-      "nullable": null,
-      "types": [
-        "string"
-      ],
-      "spread": false,
-      "description": ""
-    },
-    "generator": false
+    }
   },
   {
     "__docId__": 9,
     "kind": "function",
+    "name": "buildAuthorization",
+    "memberof": "src/index.js",
+    "generator": false,
+    "async": false,
     "static": true,
-    "variation": null,
-    "name": "querystringify",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~querystringify",
+    "longname": "src/index.js~buildAuthorization",
     "access": null,
     "export": true,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": "{querystringify}",
-    "description": "Creates a query string",
-    "lineNumber": 153,
+    "importPath": "aws-sigv4/src/index.js",
+    "importStyle": "{buildAuthorization}",
+    "description": "Creates the authorization string\nhttps://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html",
+    "lineNumber": 131,
     "unknown": [
       {
         "tagName": "@returns",
@@ -531,26 +486,6 @@
       }
     ],
     "params": [
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "action",
-        "description": ""
-      },
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "algorithm",
-        "description": ""
-      },
       {
         "nullable": false,
         "types": [
@@ -569,26 +504,6 @@
         "spread": false,
         "optional": false,
         "name": "credentialScope",
-        "description": ""
-      },
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "date",
-        "description": ""
-      },
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "timeoutInterval",
         "description": ""
       },
       {
@@ -619,384 +534,112 @@
       ],
       "spread": false,
       "description": ""
-    },
-    "generator": false
-  },
-  {
-    "__docId__": 10,
-    "kind": "function",
-    "static": true,
-    "variation": null,
-    "name": "parseRequest",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~parseRequest",
-    "access": null,
-    "export": true,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": "{parseRequest}",
-    "description": "Parses an HTTP request into a header and body",
-    "lineNumber": 171,
-    "unknown": [
-      {
-        "tagName": "@returns",
-        "tagValue": "{{head: string, body: string}}"
-      }
-    ],
-    "params": [
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "request",
-        "description": ""
-      }
-    ],
-    "return": {
-      "nullable": null,
-      "types": [
-        "{head: string, body: string}"
-      ],
-      "spread": false,
-      "description": ""
-    },
-    "generator": false
+    }
   },
   {
     "__docId__": 11,
-    "kind": "function",
+    "kind": "external",
+    "name": "Infinity",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Infinity",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
     "static": true,
-    "variation": null,
-    "name": "unparseRequest",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~unparseRequest",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Infinity",
     "access": null,
-    "export": false,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": null,
-    "description": "Unparses an HTTP header and an HTTP body into an HTTP request",
-    "lineNumber": 184,
-    "unknown": [
-      {
-        "tagName": "@returns",
-        "tagValue": "{string}"
-      }
-    ],
-    "params": [
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "head",
-        "description": ""
-      },
-      {
-        "nullable": null,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "body",
-        "description": ""
-      }
-    ],
-    "return": {
-      "nullable": null,
-      "types": [
-        "string"
-      ],
-      "spread": false,
-      "description": ""
-    },
-    "generator": false
+    "description": "",
+    "builtinExternal": true
   },
   {
     "__docId__": 12,
-    "kind": "function",
+    "kind": "external",
+    "name": "NaN",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
     "static": true,
-    "variation": null,
-    "name": "parseHead",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~parseHead",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~NaN",
     "access": null,
-    "export": true,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": "{parseHead}",
-    "description": "Parses an HTTP header into its component parts",
-    "lineNumber": 197,
-    "unknown": [
-      {
-        "tagName": "@returns",
-        "tagValue": "{{method: string, requestURI: string, httpVersion: string, headers: Array.<string>}}"
-      }
-    ],
-    "params": [
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "head",
-        "description": ""
-      }
-    ],
-    "return": {
-      "nullable": null,
-      "types": [
-        "{method: string, requestURI: string, httpVersion: string, headers: Array.<string>}"
-      ],
-      "spread": false,
-      "description": ""
-    },
-    "generator": false
+    "description": "",
+    "builtinExternal": true
   },
   {
     "__docId__": 13,
-    "kind": "function",
+    "kind": "external",
+    "name": "undefined",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
     "static": true,
-    "variation": null,
-    "name": "parseRequestLine",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~parseRequestLine",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~undefined",
     "access": null,
-    "export": false,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": null,
-    "description": "Parses an HTTP request line into its component parts",
-    "lineNumber": 212,
-    "unknown": [
-      {
-        "tagName": "@returns",
-        "tagValue": "{{method: string, requestURI: string, httpVersion: string}}"
-      }
-    ],
-    "params": [
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "requestLine",
-        "description": ""
-      }
-    ],
-    "return": {
-      "nullable": null,
-      "types": [
-        "{method: string, requestURI: string, httpVersion: string}"
-      ],
-      "spread": false,
-      "description": ""
-    },
-    "generator": false
+    "description": "",
+    "builtinExternal": true
   },
   {
     "__docId__": 14,
-    "kind": "function",
+    "kind": "external",
+    "name": "null",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
     "static": true,
-    "variation": null,
-    "name": "parseUrl",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~parseUrl",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~null",
     "access": null,
-    "export": false,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": null,
-    "description": "Parses a URL into its canonical parts",
-    "lineNumber": 233,
-    "unknown": [
-      {
-        "tagName": "@returns",
-        "tagValue": "{{canonicalURI: string, canonicalQueryString: string}}"
-      }
-    ],
-    "params": [
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "rawUrl",
-        "description": ""
-      }
-    ],
-    "return": {
-      "nullable": null,
-      "types": [
-        "{canonicalURI: string, canonicalQueryString: string}"
-      ],
-      "spread": false,
-      "description": ""
-    },
-    "generator": false
+    "description": "",
+    "builtinExternal": true
   },
   {
     "__docId__": 15,
-    "kind": "function",
+    "kind": "external",
+    "name": "Object",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
     "static": true,
-    "variation": null,
-    "name": "parseCanonicalHeaders",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~parseCanonicalHeaders",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Object",
     "access": null,
-    "export": false,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": null,
-    "description": "Parses raw headers into canonical headers and signed headers",
-    "lineNumber": 288,
-    "unknown": [
-      {
-        "tagName": "@returns",
-        "tagValue": "{{canonicalHeadersString: string, signedHeadersString: string}}"
-      }
-    ],
-    "params": [
-      {
-        "nullable": null,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "rawHeaders",
-        "description": ""
-      }
-    ],
-    "return": {
-      "nullable": null,
-      "types": [
-        "{canonicalHeadersString: string, signedHeadersString: string}"
-      ],
-      "spread": false,
-      "description": ""
-    },
-    "generator": false
+    "description": "",
+    "builtinExternal": true
   },
   {
     "__docId__": 16,
-    "kind": "function",
+    "kind": "external",
+    "name": "object",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
     "static": true,
-    "variation": null,
-    "name": "addAuthorization",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~addAuthorization",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~object",
     "access": null,
-    "export": true,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": "{addAuthorization}",
-    "description": "Adds the authorization headers, and optionally, the STS security token to the request",
-    "lineNumber": 334,
-    "unknown": [
-      {
-        "tagName": "@returns",
-        "tagValue": "{string}"
-      }
-    ],
-    "params": [
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "request",
-        "description": ""
-      },
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "authorization",
-        "description": ""
-      },
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": true,
-        "name": "securityToken",
-        "description": ""
-      }
-    ],
-    "return": {
-      "nullable": null,
-      "types": [
-        "string"
-      ],
-      "spread": false,
-      "description": ""
-    },
-    "generator": false
+    "description": "",
+    "builtinExternal": true
   },
   {
     "__docId__": 17,
-    "kind": "function",
+    "kind": "external",
+    "name": "Function",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
     "static": true,
-    "variation": null,
-    "name": "requestToCanonicalRequest",
-    "memberof": "src/index.es6",
-    "longname": "src/index.es6~requestToCanonicalRequest",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Function",
     "access": null,
-    "export": true,
-    "importPath": "aws-sigv4/src/index.es6",
-    "importStyle": "{requestToCanonicalRequest}",
-    "description": "Creates a canonical request from a standard request",
-    "lineNumber": 353,
-    "unknown": [
-      {
-        "tagName": "@returns",
-        "tagValue": "{string}"
-      }
-    ],
-    "params": [
-      {
-        "nullable": false,
-        "types": [
-          "string"
-        ],
-        "spread": false,
-        "optional": false,
-        "name": "request",
-        "description": ""
-      }
-    ],
-    "return": {
-      "nullable": null,
-      "types": [
-        "string"
-      ],
-      "spread": false,
-      "description": ""
-    },
-    "generator": false
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 18,
+    "kind": "external",
+    "name": "function",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~function",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
   },
   {
     "__docId__": 19,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Infinity",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Infinity",
+    "name": "Boolean",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Infinity",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Boolean",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1004,12 +647,11 @@
   {
     "__docId__": 20,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "NaN",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN",
+    "name": "boolean",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~NaN",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~boolean",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1017,12 +659,11 @@
   {
     "__docId__": 21,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "undefined",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined",
+    "name": "Symbol",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~undefined",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Symbol",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1030,12 +671,11 @@
   {
     "__docId__": 22,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "null",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null",
+    "name": "Error",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~null",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Error",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1043,12 +683,11 @@
   {
     "__docId__": 23,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Object",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "name": "EvalError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/EvalError",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Object",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~EvalError",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1056,12 +695,11 @@
   {
     "__docId__": 24,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "object",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "name": "InternalError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/InternalError",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~object",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~InternalError",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1069,12 +707,11 @@
   {
     "__docId__": 25,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Function",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "name": "RangeError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RangeError",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Function",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~RangeError",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1082,12 +719,11 @@
   {
     "__docId__": 26,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "function",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "name": "ReferenceError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ReferenceError",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~function",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~ReferenceError",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1095,12 +731,11 @@
   {
     "__docId__": 27,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Boolean",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
+    "name": "SyntaxError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SyntaxError",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Boolean",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~SyntaxError",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1108,12 +743,11 @@
   {
     "__docId__": 28,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "boolean",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
+    "name": "TypeError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypeError",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~boolean",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~TypeError",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1121,12 +755,11 @@
   {
     "__docId__": 29,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Symbol",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol",
+    "name": "URIError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/URIError",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Symbol",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~URIError",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1134,12 +767,11 @@
   {
     "__docId__": 30,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Error",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error",
+    "name": "Number",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Error",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Number",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1147,12 +779,11 @@
   {
     "__docId__": 31,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "EvalError",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/EvalError",
+    "name": "number",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~EvalError",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~number",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1160,12 +791,11 @@
   {
     "__docId__": 32,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "InternalError",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/InternalError",
+    "name": "Date",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~InternalError",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Date",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1173,12 +803,11 @@
   {
     "__docId__": 33,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "RangeError",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RangeError",
+    "name": "String",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~RangeError",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~String",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1186,12 +815,11 @@
   {
     "__docId__": 34,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "ReferenceError",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ReferenceError",
+    "name": "string",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~ReferenceError",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~string",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1199,12 +827,11 @@
   {
     "__docId__": 35,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "SyntaxError",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SyntaxError",
+    "name": "RegExp",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~SyntaxError",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~RegExp",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1212,12 +839,11 @@
   {
     "__docId__": 36,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "TypeError",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypeError",
+    "name": "Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~TypeError",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Array",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1225,12 +851,11 @@
   {
     "__docId__": 37,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "URIError",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/URIError",
+    "name": "Int8Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int8Array",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~URIError",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int8Array",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1238,12 +863,11 @@
   {
     "__docId__": 38,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Number",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
+    "name": "Uint8Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Number",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint8Array",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1251,12 +875,11 @@
   {
     "__docId__": 39,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "number",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
+    "name": "Uint8ClampedArray",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~number",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint8ClampedArray",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1264,12 +887,11 @@
   {
     "__docId__": 40,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Date",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date",
+    "name": "Int16Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int16Array",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Date",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int16Array",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1277,12 +899,11 @@
   {
     "__docId__": 41,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "String",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+    "name": "Uint16Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint16Array",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~String",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint16Array",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1290,12 +911,11 @@
   {
     "__docId__": 42,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "string",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+    "name": "Int32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int32Array",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~string",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int32Array",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1303,12 +923,11 @@
   {
     "__docId__": 43,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "RegExp",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp",
+    "name": "Uint32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint32Array",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~RegExp",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint32Array",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1316,12 +935,11 @@
   {
     "__docId__": 44,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Array",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array",
+    "name": "Float32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Array",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Float32Array",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1329,12 +947,11 @@
   {
     "__docId__": 45,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Int8Array",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int8Array",
+    "name": "Float64Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int8Array",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Float64Array",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1342,12 +959,11 @@
   {
     "__docId__": 46,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Uint8Array",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array",
+    "name": "Map",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint8Array",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Map",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1355,12 +971,11 @@
   {
     "__docId__": 47,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Uint8ClampedArray",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray",
+    "name": "Set",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint8ClampedArray",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Set",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1368,12 +983,11 @@
   {
     "__docId__": 48,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Int16Array",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int16Array",
+    "name": "WeakMap",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int16Array",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~WeakMap",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1381,12 +995,11 @@
   {
     "__docId__": 49,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Uint16Array",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint16Array",
+    "name": "WeakSet",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint16Array",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~WeakSet",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1394,12 +1007,11 @@
   {
     "__docId__": 50,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Int32Array",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int32Array",
+    "name": "ArrayBuffer",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int32Array",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~ArrayBuffer",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1407,12 +1019,11 @@
   {
     "__docId__": 51,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Uint32Array",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint32Array",
+    "name": "DataView",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint32Array",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~DataView",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1420,12 +1031,11 @@
   {
     "__docId__": 52,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Float32Array",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array",
+    "name": "JSON",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Float32Array",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~JSON",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1433,12 +1043,11 @@
   {
     "__docId__": 53,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Float64Array",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array",
+    "name": "Promise",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Float64Array",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Promise",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1446,12 +1055,11 @@
   {
     "__docId__": 54,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Map",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map",
+    "name": "Generator",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Map",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Generator",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1459,12 +1067,11 @@
   {
     "__docId__": 55,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Set",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set",
+    "name": "GeneratorFunction",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/GeneratorFunction",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Set",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~GeneratorFunction",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1472,12 +1079,11 @@
   {
     "__docId__": 56,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "WeakMap",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap",
+    "name": "Reflect",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~WeakMap",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Reflect",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1485,38 +1091,24 @@
   {
     "__docId__": 57,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "WeakSet",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet",
+    "name": "Proxy",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy",
     "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~WeakSet",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Proxy",
     "access": null,
     "description": "",
-    "builtinExternal": true
-  },
-  {
-    "__docId__": 58,
-    "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "ArrayBuffer",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer",
-    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~ArrayBuffer",
-    "access": null,
-    "description": "",
+    "lineNumber": 193,
     "builtinExternal": true
   },
   {
     "__docId__": 59,
     "kind": "external",
+    "name": "CanvasRenderingContext2D",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
     "static": true,
-    "variation": null,
-    "name": "DataView",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView",
-    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~DataView",
+    "longname": "BuiltinExternal/WebAPIExternal.js~CanvasRenderingContext2D",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1524,12 +1116,11 @@
   {
     "__docId__": 60,
     "kind": "external",
+    "name": "DocumentFragment",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
     "static": true,
-    "variation": null,
-    "name": "JSON",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON",
-    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~JSON",
+    "longname": "BuiltinExternal/WebAPIExternal.js~DocumentFragment",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1537,12 +1128,11 @@
   {
     "__docId__": 61,
     "kind": "external",
+    "name": "Element",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Element",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
     "static": true,
-    "variation": null,
-    "name": "Promise",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise",
-    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Promise",
+    "longname": "BuiltinExternal/WebAPIExternal.js~Element",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1550,12 +1140,11 @@
   {
     "__docId__": 62,
     "kind": "external",
+    "name": "Event",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Event",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
     "static": true,
-    "variation": null,
-    "name": "Generator",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator",
-    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Generator",
+    "longname": "BuiltinExternal/WebAPIExternal.js~Event",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1563,12 +1152,11 @@
   {
     "__docId__": 63,
     "kind": "external",
+    "name": "Node",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Node",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
     "static": true,
-    "variation": null,
-    "name": "GeneratorFunction",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/GeneratorFunction",
-    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~GeneratorFunction",
+    "longname": "BuiltinExternal/WebAPIExternal.js~Node",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1576,12 +1164,11 @@
   {
     "__docId__": 64,
     "kind": "external",
+    "name": "NodeList",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/NodeList",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
     "static": true,
-    "variation": null,
-    "name": "Reflect",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect",
-    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Reflect",
+    "longname": "BuiltinExternal/WebAPIExternal.js~NodeList",
     "access": null,
     "description": "",
     "builtinExternal": true
@@ -1589,118 +1176,26 @@
   {
     "__docId__": 65,
     "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Proxy",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy",
-    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
-    "longname": "BuiltinExternal/ECMAScriptExternal.js~Proxy",
-    "access": null,
-    "description": "",
-    "builtinExternal": true
-  },
-  {
-    "__docId__": 67,
-    "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "CanvasRenderingContext2D",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D",
-    "memberof": "BuiltinExternal/WebAPIExternal.js",
-    "longname": "BuiltinExternal/WebAPIExternal.js~CanvasRenderingContext2D",
-    "access": null,
-    "description": "",
-    "builtinExternal": true
-  },
-  {
-    "__docId__": 68,
-    "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "DocumentFragment",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment",
-    "memberof": "BuiltinExternal/WebAPIExternal.js",
-    "longname": "BuiltinExternal/WebAPIExternal.js~DocumentFragment",
-    "access": null,
-    "description": "",
-    "builtinExternal": true
-  },
-  {
-    "__docId__": 69,
-    "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Element",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Element",
-    "memberof": "BuiltinExternal/WebAPIExternal.js",
-    "longname": "BuiltinExternal/WebAPIExternal.js~Element",
-    "access": null,
-    "description": "",
-    "builtinExternal": true
-  },
-  {
-    "__docId__": 70,
-    "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Event",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Event",
-    "memberof": "BuiltinExternal/WebAPIExternal.js",
-    "longname": "BuiltinExternal/WebAPIExternal.js~Event",
-    "access": null,
-    "description": "",
-    "builtinExternal": true
-  },
-  {
-    "__docId__": 71,
-    "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "Node",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Node",
-    "memberof": "BuiltinExternal/WebAPIExternal.js",
-    "longname": "BuiltinExternal/WebAPIExternal.js~Node",
-    "access": null,
-    "description": "",
-    "builtinExternal": true
-  },
-  {
-    "__docId__": 72,
-    "kind": "external",
-    "static": true,
-    "variation": null,
-    "name": "NodeList",
-    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/NodeList",
-    "memberof": "BuiltinExternal/WebAPIExternal.js",
-    "longname": "BuiltinExternal/WebAPIExternal.js~NodeList",
-    "access": null,
-    "description": "",
-    "builtinExternal": true
-  },
-  {
-    "__docId__": 73,
-    "kind": "external",
-    "static": true,
-    "variation": null,
     "name": "XMLHttpRequest",
     "externalLink": "https://developer.mozilla.org/en/docs/Web/API/XMLHttpRequest",
     "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "static": true,
     "longname": "BuiltinExternal/WebAPIExternal.js~XMLHttpRequest",
     "access": null,
     "description": "",
     "builtinExternal": true
   },
   {
-    "__docId__": 74,
+    "__docId__": 66,
     "kind": "external",
-    "static": true,
-    "variation": null,
     "name": "AudioContext",
     "externalLink": "https://developer.mozilla.org/en/docs/Web/API/AudioContext",
     "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "static": true,
     "longname": "BuiltinExternal/WebAPIExternal.js~AudioContext",
     "access": null,
     "description": "",
+    "lineNumber": 34,
     "builtinExternal": true
   }
 ]
