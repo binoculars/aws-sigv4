@@ -31,7 +31,6 @@
     "babel-preset-env": "^1.4.0",
     "chai": "^3.5.0",
     "coveralls": "^2.11.4",
-    "esdoc": "^0.5.2",
     "eslint": "^3.19.0",
     "mocha": "^3.0.2",
     "mocha-eslint": "^3.0.1",
