@@ -1,6 +1,6 @@
 {
   "name": "aws-sigv4",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "AWS Signature Version 4",
   "main": "lib/node/index.js",
   "engines": {
