@@ -17,14 +17,16 @@ after_success:
 - |
   set -e
 
-  if [ $TRAVIS_NODE_VERSION != '7']; then
+  echo $TRAVIS_NODE_VERSION
+
+  if [ $TRAVIS_NODE_VERSION != 7 ]; then
     exit 0
   fi
 
   # Coverage
-  # yarn run coverage
+  yarn run coverage
 
-  SOURCE_BRANCH='feature/auto-update-docs'
+  SOURCE_BRANCH='master'
   TARGET_BRANCH='gh-pages'
 
   if [ "$TRAVIS_PULL_REQUEST" != "false" -o $TRAVIS_BRANCH != $SOURCE_BRANCH ]; then
@@ -48,6 +50,7 @@ after_success:
   # Clean out existing contents
   rm -rf gh-pages/**/* || exit 0
 
+  yarn global add esdoc
   yarn run docs
   cd gh-pages
 
