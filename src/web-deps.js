@@ -2,8 +2,19 @@ const crypto = window.crypto || window.msCrypto;
 const subtle = crypto.subtle || crypto.webkitSubtle;
 const algorithm = 'sha-256';
 
+/**
+ * Normalizes the path
+ *
+ * @returns {string}
+ */
 export const normalize = encodeURI;
 
+/**
+ * Transforms an ArrayBuffer into a hexadecimal string
+ *
+ * @param buffer - An ArrayBuffer
+ * @returns {string}
+ */
 function toHex(buffer) {
 	const bytes = new Uint8Array(buffer);
 
@@ -17,6 +28,11 @@ function toHex(buffer) {
 	return str;
 }
 
+/**
+ * Transforms a hexadecimal string into an ArrayBuffer
+ *
+ * @returns {ArrayBuffer}
+ */
 const toBinary = ('TextEncoder' in window) ?
 	(str => (new TextEncoder()).encode(str)) :
 	(str => {

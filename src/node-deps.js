@@ -2,6 +2,11 @@ import {normalize} from 'path';
 import {createHmac, createHash} from 'crypto';
 const algorithm = 'sha256';
 
+/**
+ * Normalizes the path
+ *
+ * @return {string}
+ */
 export {normalize} from 'path';
 
 /**

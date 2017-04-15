@@ -1,5 +1,12 @@
 import {hash, hmac, normalize} from 'deps';
 
+/** @function
+ * Computes the hash
+ *
+ * @name hash
+ * @param {!string} data - The data to hash
+ * @returns {Promise<string>} - The hashed output
+ */
 export {hash};
 
 const algorithm = 'AWS4-HMAC-SHA256';
