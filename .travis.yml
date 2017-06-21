@@ -1,18 +1,24 @@
 dist: trusty
-sudo: false
+sudo: required
+group: edge
+
 language: node_js
 node_js:
 - 4.3.2
 - lts/argon
 - lts/boron
 - '7'
+- '8'
+
 env:
   global:
   - COMMIT_AUTHOR_EMAIL: "barrett.harber@gmail.com"
+
 cache:
   yarn: true
   directories:
   - test/fixtures
+
 after_success:
 - |
   set -e
