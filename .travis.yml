@@ -1,13 +1,11 @@
 dist: trusty
-sudo: required
-group: edge
+sudo: false
 
 language: node_js
 node_js:
 - 4.3.2
 - lts/argon
 - lts/boron
-- '7'
 - '8'
 
 env:
@@ -25,7 +23,7 @@ after_success:
 
   echo $TRAVIS_NODE_VERSION
 
-  if [ $TRAVIS_NODE_VERSION != '7' ]; then
+  if [ $TRAVIS_NODE_VERSION != '8' ]; then
     exit 0
   fi
 
