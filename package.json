@@ -26,7 +26,7 @@
   "devDependencies": {
     "babel-cli": "^6.24.1",
     "babel-core": "^6.24.1",
-    "babel-loader": "^6.4.1",
+    "babel-loader": "^7.0.0",
     "babel-polyfill": "^6.23.0",
     "babel-preset-env": "^1.4.0",
     "chai": "^3.5.0",
@@ -35,7 +35,7 @@
     "mocha": "^3.0.2",
     "mocha-eslint": "^3.0.1",
     "mocha-loader": "1.1.1",
-    "nyc": "10.2.0",
+    "nyc": "10.3.2",
     "unzip": "0.1.11",
     "webpack": "^3.0.0"
   },
