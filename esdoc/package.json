@@ -1,6 +1,6 @@
 {
   "name": "aws-sigv4",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "AWS Signature Version 4",
   "main": "lib/node/index.js",
   "engines": {
@@ -26,18 +26,18 @@
   "devDependencies": {
     "babel-cli": "^6.24.1",
     "babel-core": "^6.24.1",
-    "babel-loader": "^6.4.1",
+    "babel-loader": "^7.0.0",
     "babel-polyfill": "^6.23.0",
     "babel-preset-env": "^1.4.0",
-    "chai": "^3.5.0",
+    "chai": "^4.0.1",
     "coveralls": "^2.11.4",
-    "eslint": "^3.19.0",
+    "eslint": "^4.1.0",
     "mocha": "^3.0.2",
     "mocha-eslint": "^3.0.1",
     "mocha-loader": "1.1.1",
-    "nyc": "10.2.0",
+    "nyc": "10.3.2",
     "unzip": "0.1.11",
-    "webpack": "^2.4.1"
+    "webpack": "^3.0.0"
   },
   "babel": {
     "presets": [
