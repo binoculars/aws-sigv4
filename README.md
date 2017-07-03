@@ -22,20 +22,30 @@
 ```JavaScript
 const sigv4 = require('aws-sigv4');
 
-const signature = await sigv4.sign(
-	secretAccessKey,
-	requestDate.slice(0, 8),
-	'us-east-1',
-	'host',
-	stringToSign
-);
+const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+const requestDate = sigv4.formatDateTime(new Date());
+const stringToSign = 'Test string to sign';
 
-console.log(signature);
+(async () => {
+	const signature = await sigv4.sign(
+		secretAccessKey,
+		requestDate.slice(0, 8),
+		'us-east-1',
+		'host',
+		stringToSign
+	);
+
+	console.log(signature);
+})();
 ```
 
 ## Example - ES2016 (Node 4, 6, <= 7.5)
 ```JavaScript
 const sigv4 = require('aws-sigv4');
+
+const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+const requestDate = sigv4.formatDateTime(new Date());
+const stringToSign = 'Test string to sign';
 
 sigv4.sign(
 	secretAccessKey,
@@ -45,8 +55,12 @@ sigv4.sign(
 	stringToSign
 )
 	.then(signature => console.log(signature));
+```
 
-// Or, more specifically for S3:
+### Or, more specifically for S3:
+
+```JavaScript
+const sigv4 = require('aws-sigv4');
 
 const date = sigv4
 	.formatDateTime(new Date())
@@ -76,7 +90,7 @@ sigv4.sign(
 	's3',
 	policy
 )
-	.then(signature => console.log(sigature));
+	.then(signature => console.log(signature));
 ```
 
 See [Authenticating Requests in Browser-Based Uploads Using POST (AWS Signature Version 4)](https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-UsingHTTPPOST.html) as the primary use case.
