@@ -30,7 +30,7 @@
     "babel-polyfill": "^6.23.0",
     "babel-preset-env": "^1.4.0",
     "chai": "^4.0.1",
-    "coveralls": "^2.11.4",
+    "coveralls": "^3.0.7",
     "eslint": "^4.1.0",
     "mocha": "^3.0.2",
     "mocha-eslint": "^4.0.0",
